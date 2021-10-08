@@ -250,7 +250,7 @@ class MCA8000A :
 
     def PromptForStatus (self) :
         self.ResetRTS ()
-        wait (0.1) # is this not long enough?
+        wait (0.0002)
         # could add a line to ensure oldcts is set
         # could add a check for serial connection status
         self.SetRTS ()
