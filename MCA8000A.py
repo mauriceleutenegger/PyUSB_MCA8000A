@@ -93,12 +93,24 @@ class MCA8000A :
 
     def PurgeRX (self) :
         self.serial_connection.reset_input_buffer ()
+
+    def PurgeTX (self):
+        self.serial_connection.reset_output_buffer ()
+        
+    def RememberCTS (self) :
+        self.oldcts = self.serial_connection.cts
+
+    def IsCTSFlipped (self) :
+        return self.oldcts != self.serial_connection.cts
         
     def PowerOn (self, freq=2000, duration=0.1, power_on_time=4.0) : # Hz, s, s
         # spec is 1-200 kHz for > 50 ms 
         # the 4 s is from the code, probably could shorten
         delay = 0.5 / freq # delay for half a cycle
         ncycles = int (duration * freq)
+        # close and open port in case something is messed up
+        self.serial_connection.close ()
+        self.serial_connection.open ()
         self.SetRTS ()
         for i in range (ncycles) :
             self.SetDTR ()
@@ -120,14 +132,15 @@ class MCA8000A :
             self.is_USB_MCA = False
             print ("Error identifying MCA type.")
         self.ResetRTS ()
+        self.RememberCTS ()
         # close port? doesn't seem necessary
         return
 
     def WaitForCTSFlip (self, delay=0.2) :
         timeout = timeit.default_timer () + delay
         while (True) :
-            if self.oldcts != self.serial_connection.cts :
-                self.oldcts = self.serial_connection.cts
+            if self.IsCTSFlipped () :
+                self.RememberCTS ()
                 return 0 # success
             if timeit.default_timer () > timeout :
                 if self.debug : print ("CTS did not flip")
@@ -148,14 +161,15 @@ class MCA8000A :
         for i in range (n_retries) :
             if self.debug : print ("Retry number {}".format (i))
 
-            self.serial_connection.reset_output_buffer ()
-            self.oldcts = self.serial_connection.cts
+            # get ready
+            self.PurgeTX ()
+            self.RememberCTS ()
 
             # set RTS and check for CTS flip
             self.SetRTS ()
             if self.WaitForCTSFlip () :
                 if self.debug : print ("First CTS flip failed")
-                self.serial_connection.rts = False
+                self.ResetRTS ()
                 continue # retry
 
             # send data
@@ -163,17 +177,16 @@ class MCA8000A :
             
             if self.WaitToSendData () :
                 if self.debug : print ("Writing data failed")
-                self.serial_connection.rts = False
+                self.ResetRTS ()
                 continue # retry
             
             # make sure the buffer for receiving MCA data is cleared
-            self.serial_connection.reset_input_buffer ()
-
+            self.PurgeRX ()
 
             # check for 2nd CTS flip
             if self.WaitForCTSFlip () :
                 if self.debug : print ("Second CTS flip failed")
-                self.serial_connection.rts = False
+                self.ResetRTS ()
                 continue # retry
             # end transmission
             self.ResetRTS ()
@@ -183,28 +196,28 @@ class MCA8000A :
         print ("Sending command failed")
         return 1 # failure
 
-    def GetStatus (self) :
-        self.serial_connection.rts = True
-        if self.WaitForCTSFlip () :
-            if self.debug : print ("GetStatus: CTS flip failed")
-            return 1 # failure
-        self.serial_connection.rts = False
-        # should break the below to a separate function
-        timeout = timeit.default_timer () + delay
-        outdata = bytearray ()
-        while (True) :
-            if (self.serial_connection.in_waiting > 0) :
-                timeout = timeit.default_timer () + delay # reset
-                outdata.append (self.serial_connection.read (1))
-            if timeit.default_timer () > timeout :
-                print ("GetStatus: read timeout")
-                return 1 # failure
-            if len (outdata) == 20 :
-                break # done getting data
-        # just print bytes for now
-        for i in range (20) :
-            print (outdata[i])
-        return 0
+    #def GetStatus (self) :
+    #    self.serial_connection.rts = True
+    #    if self.WaitForCTSFlip () :
+    #        if self.debug : print ("GetStatus: CTS flip failed")
+    #        return 1 # failure
+    #    self.serial_connection.rts = False
+    #    # should break the below to a separate function
+    #    timeout = timeit.default_timer () + delay
+    #    outdata = bytearray ()
+    #    while (True) :
+    #        if (self.serial_connection.in_waiting > 0) :
+    #            timeout = timeit.default_timer () + delay # reset
+    #            outdata.append (self.serial_connection.read (1))
+    #        if timeit.default_timer () > timeout :
+    #            print ("GetStatus: read timeout")
+    #            return 1 # failure
+    #        if len (outdata) == 20 :
+    #            break # done getting data
+    #    # just print bytes for now
+    #    for i in range (20) :
+    #        print (outdata[i])
+    #    return 0
 
 
     def SetBaudRate (self, baudrate) :
@@ -219,23 +232,25 @@ class MCA8000A :
         wait (0.1)
         # send command
         self.SetDTR ()
-        stat = self.SendCommand (comm) :
+        stat = self.SendCommand (comm)
         self.ResetDTR ()
         if stat :
             print ("SetBaudRate: couldn't send command")
+            # SHOULDN'T IT RESET RTS?
             return 1 # failure    
         # set baudrate on comm port, clear
         self.serial_connection.baudrate = baudrate
         #self.serial_connection.rts = False # should already be zero
         wait (0.2)
+        # SHOULDN'T IT RESET RTS?
         # get status to confirm it's OK
-        self.GetStatus ()
+        self.GetStatus () # FIX ME
         return 0
     
 
     def PromptForStatus (self) :
         self.ResetRTS ()
-        wait (0.0002)
+        wait (0.1) # is this not long enough?
         # could add a line to ensure oldcts is set
         # could add a check for serial connection status
         self.SetRTS ()
@@ -245,6 +260,7 @@ class MCA8000A :
         wait (0.0002)
         return stat
 
+    # can this every be called without serial number?
     def ReceiveStatusFromPrompt (self) :
         stat = self.PromptForStatus ()
         if not stat :
@@ -253,7 +269,7 @@ class MCA8000A :
 
     def ReceiveStatusWithRetry (self, nretries=10) :
         for i in range (nretries) :
-            stat = self.ReceiveStatus ()
+            stat = self.ReceiveStatus (hasSerialNumber=True)
             if not stat : # success
                 return stat
             stat = self.PromptForStatus ()
@@ -273,17 +289,20 @@ class MCA8000A :
                 return 1 # failure
             if len (outdata) == 20 :
                 break # done getting data        
-        stat = self.UpdateStatus (outdata, hasSerialNumber)
+        stat = self.UpdateStatusFromData (outdata, hasSerialNumber)
         if stat :
-            print ("ReceiveStatus: failed in UpdateStatus")
+            print ("ReceiveStatus: failed in UpdateStatusFromData")
             return 1
         return 0 # success
 
-    def UpdateStatus (self, data, hasSerialNumber=False) :
+    def UpdateStatusFromData (self, data, hasSerialNumber=False) :
         checksum = data[-1]
-        datasum = sum (data[:-1])
+        datasum = sum (data[:-1]) % 256
         if checksum != datasum :
-            print ("UpdaateStatus: checksum error")
+            print ("UpdateStatusFromData: checksum error")
+            if self.debug :
+                for i in range (20) :
+                    print (data[i])
             return 1 # failure
         #should do something with checksum if hasSerialNumber=False
         if hasSerialNumber :
