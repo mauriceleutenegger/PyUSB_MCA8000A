@@ -242,9 +242,11 @@ class MCA8000A :
         self.serial_connection.baudrate = baudrate
         #self.serial_connection.rts = False # should already be zero
         wait (0.2)
+
+        self.ReceiveStatusFromPrompt ()
         # SHOULDN'T IT RESET RTS?
         # get status to confirm it's OK
-        self.GetStatus () # FIX ME
+        #self.GetStatus () # FIX ME
         return 0
     
 
@@ -277,24 +279,31 @@ class MCA8000A :
                 break
         return stat
 
-    def ReceiveStatus (self, delay=0.2, hasSerialNumber=False) :
-        timeout = timeit.default_timer () + delay
-        outdata = bytearray ()
-        while (True) :
-            if (self.serial_connection.in_waiting > 0) :
-                timeout = timeit.default_timer () + delay # reset
-                outdata.append (self.serial_connection.read (1)[0])
-            if timeit.default_timer () > timeout :
-                print ("ReceiveStatus: read timeout")
-                return 1 # failure
-            if len (outdata) == 20 :
-                break # done getting data        
-        stat = self.UpdateStatusFromData (outdata, hasSerialNumber)
+    def ReceiveStatus (self, hasSerialNumber=False) :
+        stat, StatusData = self.ReceiveData (20)
+        #timeout = timeit.default_timer () + delay
+        #outdata = bytearray ()
+        #while (True) :
+        #    if (self.serial_connection.in_waiting > 0) :
+        #        timeout = timeit.default_timer () + delay # reset
+        #        outdata.append (self.serial_connection.read (1)[0])
+        #    if timeit.default_timer () > timeout :
+        #        print ("ReceiveStatus: read timeout")
+        #        return 1 # failure
+        #    if len (outdata) == 20 :
+        #        break # done getting data
+        stat = self.UpdateStatusFromData (StatusData, hasSerialNumber)
         if stat :
             print ("ReceiveStatus: failed in UpdateStatusFromData")
             return 1
         return 0 # success
 
+    def ReceiveStatusCheckSum (self) :
+        stat, StatusData = self.ReceiveData (20)
+        if stat:
+            return stat, NULL
+        return stat, int.from_bytes (StatusData[:4], "big")
+    
     def UpdateStatusFromData (self, data, hasSerialNumber=False) :
         checksum = data[-1]
         datasum = sum (data[:-1]) % 256
@@ -329,3 +338,53 @@ class MCA8000A :
         self.isBackupBatteryBad = bool ((flags >> 7) & 1)
         # backup battery bad/OK is bit 7
         return 0
+
+    # returns status and data
+    # if status is bad don't use data
+    def ReceiveData (self, nbytes, delay=0.2) :
+        timeout = timeit.default_timer () + delay
+        outdata = bytearray ()
+        while (True) :
+            available = self.serial_connection.in_waiting
+            if (available) :
+                timeout = timeit.default_timer () + delay # reset timer
+                # read whatever you can get, but don't go over nbytes
+                nbytes_to_get = min (available, nbytes - len (outdata))
+                outdata += self.serial_connection.read (nbytes_to_get)
+            if timeit.default_timer () > timeout :
+                print ("ReceiveStatus: read timeout")
+                return 1, None  # failure
+            if len (outdata) >= nbytes : # done getting data
+                if len (outdata) > nbytes :
+                    return 1, outdata # got more than we expected
+                else :
+                    return 0, outdata
+        return 1, None
+
+    def GetData_OneCommand (self, start_channel, words_requested) :
+        comm = Command_SendData (start_channel, words_requested)
+        stat = self.SendCommand (comm)
+        if stat :
+            print ("GetLowerData: error sending command")
+            return stat
+        stat = self.ReceiveStatus () # no S/N
+        if stat :
+            print ("GetLowerData: failed getting status")
+        stat, data = self.ReceiveData (words_requested*2)
+        if stat :
+            print ("GetLowerData: error receiving data")
+            return stat
+        # now get the checksum
+        comm = Command_SendData (0,1)
+        stat = self.SendCommand (comm)
+        if stat :
+            print ("GetLowerData: error sending command")
+            return stat
+        # need to mod 2^16 this number (don't know why not 32)
+        print ("data sum is {}".format (sum (data)))
+        stat, checksum = self.ReceiveStatusCheckSum ()
+        if stat :
+            print ("GetLowerData: error getting checksum")
+        print ("check sum is {}".format (checksum))
+        return data
+        
