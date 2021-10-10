@@ -66,6 +66,7 @@ class MCA8000A :
         # status variables
         self.SerialNumber = 0 # dummy
         self.Group = 0
+        self.LastDataCheckSum = 0 # dummy
         self.PresetTime = 0.0
         self.RealTime = 0.0
         self.LiveTime = 0.0
@@ -78,6 +79,9 @@ class MCA8000A :
         self.isProtected = False
         self.isNiCad = False
         self.isBackupBatteryBad = False
+        # data
+        self.ChannelData = None
+
         
     def ResetRTS (self) :
         self.serial_connection.rts = False
@@ -318,6 +322,8 @@ class MCA8000A :
             self.SerialNumber = int.from_bytes (data[0:2], "big")
             # I think group number is the next two bytes
             # but I did not check
+        else :
+            self.LastDataCheckSum = int.from_bytes (data[0:4], "big")
         self.PresetTime = int.from_bytes (data[4:7], "big")
         self.BatteryStatus = data[7] # leave as int
         self.RealTime = int.from_bytes (data[8:11], "big")
@@ -361,30 +367,64 @@ class MCA8000A :
                     return 0, outdata
         return 1, None
 
-    def GetData_OneCommand (self, start_channel, words_requested) :
+    def ReceiveChannelData (self) :
+        # this only works for resolution 1024 or below
+        # I see unexpected behavior for the get data commands
+        # when it's called with parameters other than 0,1024
+        # and even for that parameter, I see weird data for
+        # high channel numbers > 1000
+        words_requested = min (self.ADCResolution, 1024)
+        start_channel = 0
+        # first get the lower words
         comm = Command_SendData (start_channel, words_requested)
         stat = self.SendCommand (comm)
         if stat :
-            print ("GetLowerData: error sending command")
+            print ("ReceiveChannelData: error sending command")
             return stat
         stat = self.ReceiveStatus () # no S/N
         if stat :
-            print ("GetLowerData: failed getting status")
-        stat, data = self.ReceiveData (words_requested*2)
+            print ("ReceiveChannelData: failed getting status")
+        stat, lowerdata = self.ReceiveData (words_requested*2)
         if stat :
-            print ("GetLowerData: error receiving data")
+            print ("ReceiveChannelData: error receiving data")
             return stat
-        # now get the checksum
+        lowerdatachecksum = sum (lowerdata) % (2**16) # Amptek's prescription
+        # now get the upper words
+        comm = Command_SendData (start_channel, words_requested, upper=True)
+        stat = self.SendCommand (comm)
+        if stat :
+            print ("ReceiveChannelData: error sending command")
+            return stat
+        stat = self.ReceiveStatus () # no S/N
+        if stat :
+            print ("ReceiveChannelData: failed getting status")
+        # ReceiveStatus updated the checksum, now check it
+        if lowerdatachecksum != self.LastDataCheckSum :
+            print ("ReceiveChannelData: lower word checksum failed")
+            return 1
+        # now get the upper word data
+        stat, upperdata = self.ReceiveData (words_requested*2)
+        if stat :
+            print ("ReceiveChannelData: error receiving data")
+            return stat
+        upperdatachecksum = sum (upperdata)  % (2**16)
+        # ask for 1 word of data to prompt a status with checksum
         comm = Command_SendData (0,1)
         stat = self.SendCommand (comm)
         if stat :
-            print ("GetLowerData: error sending command")
+            print ("ReceiveChannelData: error sending command")
             return stat
-        # need to mod 2^16 this number (don't know why not 32)
-        print ("data sum is {}".format (sum (data)))
-        stat, checksum = self.ReceiveStatusCheckSum ()
+        stat = self.ReceiveStatus () # no S/N
         if stat :
-            print ("GetLowerData: error getting checksum")
-        print ("check sum is {}".format (checksum))
-        return data
+            print ("ReceiveChannelData: failed getting status")
+        # ReceiveStatus updated the checksum, now check it
+        if upperdatachecksum != self.LastDataCheckSum :
+            print ("ReceiveChannelData: lower word checksum failed")
+            return 1
+        self.PurgeRX () # throw out the remaining byte
+
+        lower = np.frombuffer (lowerdata, dtype=np.int16)
+        upper = np.frombuffer (upperdata, dtype=np.int16)
+        self.ChannelData = lower + upper * 2**16
+        return 0
         
