@@ -55,7 +55,8 @@ def Command_SendData (start_channel, words_requested,
 class MCA8000A :
     def __init__ (self, device_path, baudrate=4800) :
         self.device_path = device_path
-        self.baudrate = baudrate
+        self.baudrate = baudrate # this doesn't do anything right now
+        # should probably get rid of it
         self.serial_connection = serial.Serial \
             (self.device_path, baudrate=4800, parity='E',
              timeout=0.2, write_timeout=0.2)
@@ -106,6 +107,31 @@ class MCA8000A :
 
     def IsCTSFlipped (self) :
         return self.oldcts != self.serial_connection.cts
+
+    def PrintStatus (self) :
+        print ("Serial Number:\t {}".format (self.SerialNumber))
+        print ("Group:\t {}".format (self.Group))
+        print ("Preset Time:\t {}".format (self.PresetTime))
+        print ("Real Time:\t {}".format (self.RealTime))
+        print ("Live Time:\t {}".format (self.LiveTime))
+        print ("BatteryStatus:\t {}".format (self.BatteryStatus))
+        print ("Threshold:\t {}".format (self.Threshold))
+        print ("ADC Resolution:\t {}".format (self.ADCResolution))
+        if self.isLive :
+            print ("Using live timer")
+        else :
+            print ("Using real timer")
+        if self.isRunning :
+            print ("Acquiring data")
+        else :
+            print ("Not acquiring data")
+        MCAsecurity = "Protected" if self.isProtected else "Public"
+        print ("MCA security:\t {}".format (MCAsecurity))
+        BatteryType = 'NiCad' if self.isNiCad else 'Alkaline'
+        print ("Battery type:\t {}".format (BatteryType))
+        BackupBatteryStatus = 'bad' if self.isBackupBatteryBad else 'good'
+        print ("Backup battery is {}".format (BackupBatteryStatus))
+        return
         
     def PowerOn (self, freq=2000, duration=0.1, power_on_time=4.0) : # Hz, s, s
         # spec is 1-200 kHz for > 50 ms 
