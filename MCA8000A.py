@@ -275,6 +275,8 @@ class MCA8000A :
         #self.serial_connection.rts = False # should already be zero
         wait (0.2)
 
+        self.PurgeRx () # throw out whatever's in there
+
         self.ReceiveStatusFromPrompt ()
         # SHOULDN'T IT RESET RTS?
         # get status to confirm it's OK
@@ -436,8 +438,9 @@ class MCA8000A :
             print ("ReceiveChannelData: error receiving data")
             return stat
         upperdatachecksum = sum (upperdata)  % (2**16)
-        # ask for 1 word of data to prompt a status with checksum
-        comm = Command_SendData (0,1)
+        # ask for 64 words of data to prompt a status with checksum
+        comm = Command_SendData (0,64)
+        # tried asking for one but for some reason that seemed to be a problem
         stat = self.SendCommand (comm)
         if stat :
             print ("ReceiveChannelData: error sending command")
@@ -449,7 +452,13 @@ class MCA8000A :
         if upperdatachecksum != self.LastDataCheckSum :
             print ("ReceiveChannelData: lower word checksum failed")
             return 1
-        self.PurgeRX () # throw out the remaining byte
+        # get the words; purging seems to not work reliably, so just read all
+        stat, dummydata = self.ReceiveData (words_requested*2)
+        if stat :
+            print ("ReceiveChannelData: error receiving data")
+            return stat
+        # throw away the dummy data
+        #self.PurgeRX () # throw out the remaining byte
 
         lower = np.frombuffer (lowerdata, dtype=np.int16)
         upper = np.frombuffer (upperdata, dtype=np.int16)
