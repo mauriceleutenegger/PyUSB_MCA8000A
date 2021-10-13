@@ -275,7 +275,7 @@ class MCA8000A :
         #self.serial_connection.rts = False # should already be zero
         wait (0.2)
 
-        self.PurgeRx () # throw out whatever's in there
+        self.PurgeRX () # throw out whatever's in there
 
         self.ReceiveStatusFromPrompt ()
         # SHOULDN'T IT RESET RTS?
