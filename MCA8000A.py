@@ -218,6 +218,8 @@ class MCA8000A :
                 if self.debug : print ("Second CTS flip failed")
                 self.ResetRTS ()
                 continue # retry
+
+            self.PurgeRX () # apparently sometimes an extra byte shows up early?
             # end transmission
             self.ResetRTS ()
             
