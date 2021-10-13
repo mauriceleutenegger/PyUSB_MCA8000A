@@ -439,7 +439,8 @@ class MCA8000A :
             return stat
         upperdatachecksum = sum (upperdata)  % (2**16)
         # ask for 64 words of data to prompt a status with checksum
-        comm = Command_SendData (0,64)
+        dummy_words_requested = 64
+        comm = Command_SendData (0,dummy_words_requested)
         # tried asking for one but for some reason that seemed to be a problem
         stat = self.SendCommand (comm)
         if stat :
@@ -453,7 +454,7 @@ class MCA8000A :
             print ("ReceiveChannelData: lower word checksum failed")
             return 1
         # get the words; purging seems to not work reliably, so just read all
-        stat, dummydata = self.ReceiveData (words_requested*2)
+        stat, dummydata = self.ReceiveData (dummy_words_requested*2)
         if stat :
             print ("ReceiveChannelData: error receiving data")
             return stat
