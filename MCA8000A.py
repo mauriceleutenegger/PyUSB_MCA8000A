@@ -315,6 +315,9 @@ class MCA8000A :
 
     def ReceiveStatus (self, hasSerialNumber=False) :
         stat, StatusData = self.ReceiveData (20)
+        if stat:
+            print ("ReceiveStatus: error getting status bytes")
+            return 1
         #timeout = timeit.default_timer () + delay
         #outdata = bytearray ()
         #while (True) :
@@ -388,7 +391,7 @@ class MCA8000A :
                 nbytes_to_get = min (available, nbytes - len (outdata))
                 outdata += self.serial_connection.read (nbytes_to_get)
             if timeit.default_timer () > timeout :
-                print ("ReceiveStatus: read timeout")
+                print ("ReceiveData: read timeout")
                 return 1, None  # failure
             if len (outdata) >= nbytes : # done getting data
                 if len (outdata) > nbytes :
