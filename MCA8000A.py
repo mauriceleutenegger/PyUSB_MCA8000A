@@ -53,9 +53,10 @@ def Command_SendData (start_channel, words_requested,
     
 
 class MCA8000A :
-    def __init__ (self, device_path, baudrate=4800) :
+    def __init__ (self, device_path, baudrate=4800, isMacFTDI=False) :
         self.device_path = device_path
         self.baudrate = baudrate # this doesn't do anything right now
+        self.isMacFTDI = isMacFTDI
         # should probably get rid of it
         self.serial_connection = serial.Serial \
             (self.device_path, baudrate=4800, parity='E',
@@ -187,6 +188,31 @@ class MCA8000A :
                 return 1 # failure
         return 2 # should not get here
 
+    # this function only does the actual write command on the serial port
+    # the behavior depends on self.isMacFTDI
+    # if true, then it writes individual bytes
+    # and pauses to let the FTDI chip finish sending each byte
+    # this is because of an apparent bug in the MacOS FTDI driver
+    def SendCommandBytes (self, commandbytes) :
+        if self.isMacFTDI :
+            single_byte_delay = 10.0 / self.baudrate # time to send 10 bits
+            for i in range (len (commandbytes)) :
+                self.serial_connection.write ((bytes([commandbytes[i]])))
+                # the syntax of the preceding line is needed to
+                # make a bytes object of length one
+                # a single element of a bytearray i.e. commandbytes[i] is an int
+                # so we make that into a list with length one
+                # and cast it as bytes
+                stat = self.WaitToSendData ()
+                if stat : return stat
+                wait (single_byte_delay)
+            return 0
+        else :
+            self.serial_connection.write (commandbytes)
+            stat = self.WaitToSendData ()
+            if stat : return stat
+            return 0
+        
     def SendCommand (self, command, n_retries=10) :
         for i in range (n_retries) :
             if self.debug : print ("Retry number {}".format (i))
@@ -203,7 +229,8 @@ class MCA8000A :
                 continue # retry
 
             # send data
-            self.serial_connection.write (command)
+            #self.serial_connection.write (command)
+            self.SendCommandBytes (command)
             
             if self.WaitToSendData () :
                 if self.debug : print ("Writing data failed")
