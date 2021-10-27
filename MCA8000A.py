@@ -51,7 +51,62 @@ def Command_SendData (start_channel, words_requested,
     command = bytearray ([command_byte, byte1, byte2, byte3])
     return addCheckSum (command)
     
+def Command_Control (flags, threshold) :
+    # should check type of flags (needs to be 1 byte)
+    if not isinstance (threshold, int) :
+        raise TypeError ('ThresholdNotInt')
+    if threshold < 0 :
+        raise ValueError ('ThresholdLow')
+    if threshold > 16383 :
+        raise ValueError ('ThresholdHigh')
+    command_byte = 1
+    byte2 = threshold % 256 # lower byte
+    byte3 = threshold // 256 # upper byte
+    command = bytearray ([command_byte, flags, byte2, byte3])
+    return addCheckSum (command)
 
+# pick lock number zero to unlock and wipe (e.g. in case you don't know lock#)
+# not sure how to unlock if you set a non-zero lock number
+# and know what it is
+def Command_MCALock (lock_number) :
+    if not isinstance (lock_number, int) :
+        raise TypeError ('LockNumberNotInt')
+    if lock_number < 0 :
+        raise ValueError ('LockNumberLow')
+    if lock_number >= 2**16 :
+        raise ValueError ('LockNumberHigh')
+    command_byte = 117
+    # note that the lower and upper byte positions are actually not defined
+    # in the protocol manual
+    byte1 = lock_number % 256 # lower byte
+    byte2 = lock_number // 256 # upper byte
+    byte3 = 1 # doesn't matter, but can't be zero
+    command = bytearray ([command_byte, byte1, byte2, byte3])
+    return addCheckSum (command)
+    
+def Command_DeleteDataAndTime (delete_data=True, delete_time=True) :
+    command_byte = 5
+    byte1 = 1 if delete_data else 0
+    byte2 = 1 if delete_time else 0
+    byte3 = 1
+    command = bytearray ([command_byte, byte1, byte2, byte3])
+    return addCheckSum (command)
+
+def Command_PresetTime (preset) :
+    if not isinstance (preset, int) :
+        raise TypeError ('PresetNotInt')
+    if preset < 0 :
+        raise ValueError ('PresetLow')
+    if preset >= 2**24 :
+        raise ValueError ('PresetHigh')
+    command_byte = 2
+    byte3 = preset // 2**16
+    remainder = preset % 2**16
+    byte2 = remainder // 256
+    byte1 = remainder % 256
+    command = bytearray ([command_byte, byte1, byte2, byte3])
+    return addCheckSum (command)
+    
 class MCA8000A :
     def __init__ (self, device_path, baudrate=4800, isMacFTDI=False) :
         self.device_path = device_path
@@ -75,6 +130,7 @@ class MCA8000A :
         self.BatteryStatus = 0
         self.Threshold = 0
         # status from flags
+        self.flags = 0 # store flags byte as well
         self.ADCResolution = 2**14
         self.isLive = False
         self.isRunning = False
@@ -391,17 +447,21 @@ class MCA8000A :
         self.RealTime += (1.0 - RealTime75 / 75)
         self.LiveTime = int.from_bytes (data[12:15], "big")
         LiveTime75 = data[15]
-        self.LiveTime += (1.0 - RealTime75 / 75)
+        self.LiveTime += (1.0 - LiveTime75 / 75)
         self.Threshold = int.from_bytes (data[16:18], "big")
-        flags = data[18] # should parse this
-        ADCRes_bits = flags & 0b111 # resolution info is in bits 0-2
+        self.flags = data[18]
+        # parse flags
+        ADCRes_bits = self.flags & 0b111 # resolution info is in bits 0-2
         self.ADCResolution = 2**(14-ADCRes_bits)
-        # parse that
-        self.isLive = bool ((flags >> 3) & 1) # live/real timer flag is bit 3
-        self.isRunning = bool ((flags >> 4 ) & 1) # start/stop is bit 4
-        self.isProtected = bool ((flags >> 5) & 1) # protected/public is bit 5
-        self.isNiCad = bool ((flags >> 6) & 1) # NiCad/Alkaline is bit 6
-        self.isBackupBatteryBad = bool ((flags >> 7) & 1)
+        self.isLive = bool ((self.flags >> 3) & 1)
+        # live/real timer flag is bit 3
+        self.isRunning = bool ((self.flags >> 4 ) & 1)
+        # start/stop is bit 4
+        self.isProtected = bool ((self.flags >> 5) & 1)
+        # protected/public is bit 5
+        self.isNiCad = bool ((self.flags >> 6) & 1)
+        # NiCad/Alkaline is bit 6
+        self.isBackupBatteryBad = bool ((self.flags >> 7) & 1)
         # backup battery bad/OK is bit 7
         return 0
 
@@ -496,3 +556,188 @@ class MCA8000A :
         self.ChannelData = lower + upper * 2**16
         return 0
         
+    def SetThreshold (self, threshold) :
+        # user existing flags variable
+        command = Command_Control (self.flags, threshold)         
+        stat = self.SendCommand (command)
+        if stat :
+            print ("SetThreshold: error sending command")
+            return stat
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("SetThreshold: error updating status")
+            return stat
+        return 0
+
+    def SetLock (self, lock_number) :
+        command = Command_MCALock (lock_number)
+        stat = self.SendCommand (command)
+        if stat :
+            print ("SetLock: error sending command")
+            return stat
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("SetLock: error updating status")
+            return stat
+        return 0
+
+    def SetLockToZero (self) :
+        command = Command_MCALock (0)
+        stat = self.SendCommand (command)
+        if stat :
+            print ("SetLock: error sending command")
+            return stat
+        wait (4.0)
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("SetLock: error updating status")
+            return stat
+        return 0
+
+    # I think you can't just set public.
+    # Probably you have to unlock with a code.
+    #def SetPublic (self) :
+    #    flags = self.flags & 0b11011111 # set protected bit to zero
+    #    command = Command_Control (flags, self.Threshold)
+    #    stat = self.SendCommand (command)
+    #    if stat :
+    #        print ("SetPublic: error sending command")
+    #        return stat
+    #    wait (0.5)
+    #    stat = self.ReceiveStatusFromPrompt ()
+    #    if stat :
+    #        print ("SetPublic: error updating status")
+    #        return stat
+    #    return 0
+    
+    def SetADCResolution (self, channels) :
+        # rounds channels up to nearest power of two
+        # here is the code that sets resolution from bits:
+        # self.ADCResolution = 2**(14-ADCRes_bits)
+        if not isinstance (channels, int) :
+            raise TypeError ('ChannelsNotInt')
+        if channels < 128 :
+            raise ValueError ('ChannelsLow')
+        if channels > 2**14 :
+            raise ValueError ('ChannelsHigh')
+        # there's probably a more elegant way to do all this
+        # set a flag to round up if more than one bit is 1
+        roundup = True if bin (channels).count ("1") > 1 else False
+        ADCRes_bits = 0
+        for i in range (14) :
+            temp = channels << i
+            if temp & 2**14 :
+                ADCRes_bits = i
+                break
+        if roundup : ADCRes_bits -= 1
+        print (ADCRes_bits)
+        newflags = (0b11111000 & self.flags) + (0b00000111 & ADCRes_bits)
+        print (newflags)
+        command = Command_Control (newflags, self.Threshold)         
+        stat = self.SendCommand (command)
+        if stat :
+            print ("SetADCResolution: error sending command")
+            return stat
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("SetADCResolution: error updating status")
+            return stat
+        return 0
+
+    # delay sets time between sending start and asking for status
+    def StartAcquisition (self, delay=1.0) :
+        newflags = self.flags | 0b10000 # set bit 4 to one
+        command = Command_Control (newflags, self.Threshold)         
+        stat = self.SendCommand (command)
+        if stat :
+            print ("StartAcquisition: error sending command")
+            return stat
+        wait (delay)
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("StartAcquisition: error updating status")
+            return stat
+        return 0
+
+    # delay sets time between sending stop and asking for status
+    def StopAcquisition (self, delay=0.2) :
+        newflags = self.flags & 0b11101111 # set bit 4 to zero
+        command = Command_Control (newflags, self.Threshold)         
+        stat = self.SendCommand (command)
+        if stat :
+            print ("StopAcquisition: error sending command")
+            return stat
+        wait (delay)
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("StopAcquisition: error updating status")
+            return stat
+        return 0
+
+    def DeleteDataAndTime (self) :
+        command = Command_DeleteDataAndTime () # default is both
+        stat = self.SendCommand (command)
+        if stat :
+            print ("DeleteDataAndTime: error sending command")
+            return stat
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("DeleteDataAndTime: error updating status")
+            return stat
+        return 0
+
+    def DeleteData (self) :
+        command = Command_DeleteDataAndTime (delete_time=False)
+        stat = self.SendCommand (command)
+        if stat :
+            print ("DeleteData: error sending command")
+            return stat
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("DeleteData: error updating status")
+            return stat
+        return 0
+
+    def DeleteTime (self) :
+        command = Command_DeleteDataAndTime (delete_data=False)
+        stat = self.SendCommand (command)
+        if stat :
+            print ("DeleteTime: error sending command")
+            return stat
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("DeleteTime: error updating status")
+            return stat
+        return 0
+
+    def SetPresetTime (self, time) :
+        command = Command_PresetTime (time)
+        stat = self.SendCommand (command)
+        if stat :
+            print ("PresetTime: error sending command")
+            return stat
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("PresetTime: error updating status")
+            return stat
+        return 0
+    
+    # to be implemented
+    
+    # set group
+
+    # set start time
+    # set start date
+    # get start time
+    # get start date
+
+    # I don't think these are needed if you don't care about recording
+    # the external time of the experiment
+
+
+    # need to test these, but they almost certainly work
+    # clear data
+
+    # clear data and time
+
+
