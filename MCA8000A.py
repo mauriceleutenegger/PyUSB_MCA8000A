@@ -674,51 +674,71 @@ class MCA8000A :
             return stat
         return 0
 
-    def DeleteDataAndTime (self) :
+    def DeleteDataAndTime (self, delay=0.2) :
         command = Command_DeleteDataAndTime () # default is both
         stat = self.SendCommand (command)
         if stat :
             print ("DeleteDataAndTime: error sending command")
             return stat
+        wait (delay)
         stat = self.ReceiveStatusFromPrompt ()
         if stat :
             print ("DeleteDataAndTime: error updating status")
             return stat
         return 0
 
-    def DeleteData (self) :
+    def DeleteData (self, delay=0.2) :
         command = Command_DeleteDataAndTime (delete_time=False)
         stat = self.SendCommand (command)
         if stat :
             print ("DeleteData: error sending command")
             return stat
+        wait (delay)
         stat = self.ReceiveStatusFromPrompt ()
         if stat :
             print ("DeleteData: error updating status")
             return stat
         return 0
 
-    def DeleteTime (self) :
+    def DeleteTime (self, delay=0.2) :
         command = Command_DeleteDataAndTime (delete_data=False)
         stat = self.SendCommand (command)
         if stat :
             print ("DeleteTime: error sending command")
             return stat
+        wait (delay)
         stat = self.ReceiveStatusFromPrompt ()
         if stat :
             print ("DeleteTime: error updating status")
             return stat
         return 0
 
-    def SetPresetTime (self, time) :
+    def SetPresetTime (self, time, delay=0.2) :
         command = Command_PresetTime (time)
         stat = self.SendCommand (command)
         if stat :
             print ("PresetTime: error sending command")
             return stat
+        wait (delay)
         stat = self.ReceiveStatusFromPrompt ()
         if stat :
             print ("PresetTime: error updating status")
+            return stat
+        return 0
+
+    def Initialize (self, baudrate=115200) :
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("Initialize: error getting status")
+            return stat
+        print ("Setting baud rate")
+        stat = self.SetBaudRate (115200)
+        if stat :
+            print ("Initialize: error setting baud rate")
+            return stat
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("Initialize: error getting status")
             return stat
         return 0
     
