@@ -139,7 +139,7 @@ class MCA8000A :
         self.isBackupBatteryBad = False
         # data
         self.ChannelData = None
-
+        self.RawChannelData = None
         
     def ResetRTS (self) :
         self.serial_connection.rts = False
@@ -347,6 +347,9 @@ class MCA8000A :
         wait (0.1)
         # send command
         self.SetDTR ()
+        wait (0.002)
+        # DTR and RTS are supposed to be set simultaneously,
+        # but on M1 mac I found that we need a 2 ms lag
         stat = self.SendCommand (comm)
         self.ResetDTR ()
         if stat :
@@ -467,7 +470,10 @@ class MCA8000A :
 
     # returns status and data
     # if status is bad don't use data
-    def ReceiveData (self, nbytes, delay=0.2) :
+    def ReceiveData (self, nbytes, delay=0.4) :
+        # I found that sometimes a delay of 0.2 was not enough,
+        # so I increased the timeout to 0.4.
+        # I don't think it breaks anything.
         timeout = timeit.default_timer () + delay
         outdata = bytearray ()
         while (True) :
@@ -553,7 +559,14 @@ class MCA8000A :
 
         lower = np.frombuffer (lowerdata, dtype=np.int16)
         upper = np.frombuffer (upperdata, dtype=np.int16)
-        self.ChannelData = lower + upper * 2**16
+        self.RawChannelData = lower + upper * 2**16
+        # zero out the top 1/32 channels, which are used
+        # for sliding scale linearization
+        MaxChannels = self.RawChannelData.size - self.RawChannelData.size // 32
+        if self.debug :
+            print ("MaxChannels = {}".format (MaxChannels))
+        self.ChannelData = np.zeros (self.RawChannelData.size, dtype=int)
+        self.ChannelData[0:MaxChannels] = self.RawChannelData[0:MaxChannels]
         return 0
         
     def SetThreshold (self, threshold) :
