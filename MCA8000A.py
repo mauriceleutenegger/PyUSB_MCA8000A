@@ -141,6 +141,8 @@ class MCA8000A :
         # data
         self.ChannelData = None
         self.RawChannelData = None
+        # recoverable error logging
+        self.StatusChecksumErrors = 0
         
     def ResetRTS (self) :
         self.serial_connection.rts = False
@@ -421,7 +423,8 @@ class MCA8000A :
         #        break # done getting data
         stat = self.UpdateStatusFromData (StatusData, hasSerialNumber)
         if stat :
-            print ("ReceiveStatus: failed in UpdateStatusFromData")
+            if self.debug :
+                print ("ReceiveStatus: failed in UpdateStatusFromData")
             return 1
         return 0 # success
 
@@ -435,8 +438,9 @@ class MCA8000A :
         checksum = data[-1]
         datasum = sum (data[:-1]) % 256
         if checksum != datasum :
-            print ("UpdateStatusFromData: checksum error")
+            self.StatusChecksumErrors += 1
             if self.debug :
+                print ("UpdateStatusFromData: checksum error")
                 for i in range (20) :
                     print (data[i])
             return 1 # failure
