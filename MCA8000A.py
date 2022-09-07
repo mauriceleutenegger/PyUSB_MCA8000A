@@ -112,6 +112,7 @@ class MCA8000A :
         self.device_path = device_path
         self.baudrate = baudrate # this doesn't do anything right now
         self.isMacFTDI = isMacFTDI
+        self.DTR_Delay = 0.01 # parameter used for SetBaudRate on Mac
         # should probably get rid of it
         self.serial_connection = serial.Serial \
             (self.device_path, baudrate=4800, parity='E',
@@ -347,9 +348,12 @@ class MCA8000A :
         wait (0.1)
         # send command
         self.SetDTR ()
-        wait (0.002)
+        if self.isMacFTDI :
+            wait (self.DTR_Delay)
         # DTR and RTS are supposed to be set simultaneously,
-        # but on M1 mac I found that we need a 2 ms lag
+        # but on M1 mac I found that we need a lag
+        # seems to depend a bit on the MCA, but 10 ms
+        # seems to work for all of them
         stat = self.SendCommand (comm)
         self.ResetDTR ()
         if stat :
@@ -493,7 +497,7 @@ class MCA8000A :
                     return 0, outdata
         return 1, None
 
-    def ReceiveChannelData (self) :
+    def ReceiveChannelData (self, delay=0.1) :
         # this only works for resolution 1024 or below
         # I see unexpected behavior for the get data commands
         # when it's called with parameters other than 0,1024
@@ -507,6 +511,7 @@ class MCA8000A :
         if stat :
             print ("ReceiveChannelData: error sending command")
             return stat
+        wait (delay)
         stat = self.ReceiveStatus () # no S/N
         if stat :
             print ("ReceiveChannelData: failed getting status")
@@ -521,6 +526,7 @@ class MCA8000A :
         if stat :
             print ("ReceiveChannelData: error sending command")
             return stat
+        wait (delay)
         stat = self.ReceiveStatus () # no S/N
         if stat :
             print ("ReceiveChannelData: failed getting status")
@@ -542,6 +548,7 @@ class MCA8000A :
         if stat :
             print ("ReceiveChannelData: error sending command")
             return stat
+        wait (delay)
         stat = self.ReceiveStatus () # no S/N
         if stat :
             print ("ReceiveChannelData: failed getting status")
@@ -745,7 +752,7 @@ class MCA8000A :
             print ("Initialize: error getting status")
             return stat
         print ("Setting baud rate")
-        stat = self.SetBaudRate (115200)
+        stat = self.SetBaudRate (baudrate=baudrate)
         if stat :
             print ("Initialize: error setting baud rate")
             return stat
