@@ -108,15 +108,20 @@ def Command_PresetTime (preset) :
     return addCheckSum (command)
     
 class MCA8000A :
-    def __init__ (self, device_path, baudrate=4800, isMacFTDI=False) :
+    def __init__ (self, device_path, baudrate=4800) :
+        #, isMacFTDI=False) :
         self.device_path = device_path
         self.baudrate = baudrate # this doesn't do anything right now
-        self.isMacFTDI = isMacFTDI
-        self.DTR_Delay = 0.01 # parameter used for SetBaudRate on Mac
+        #self.isMacFTDI = isMacFTDI
+        #self.DTR_Delay = 0.01 # parameter used for SetBaudRate on Mac
         # should probably get rid of it
         self.serial_connection = serial.Serial \
             (self.device_path, baudrate=4800, parity='E',
              timeout=0.2, write_timeout=0.2)
+        c = self.serial_connection
+        self.bits_per_byte = 1 + c.bytesize + (c.parity !='N') + c.stopbits
+        self.send_padding = 0.02
+        # 20 ms padding after sending bytes 
         self.oldcts = self.serial_connection.cts
         self.olddsr = self.serial_connection.dsr
         self.debug = False
@@ -237,15 +242,16 @@ class MCA8000A :
                 return 1 # failure
         return 2 # should not get here
 
-    def WaitToSendData (self, delay=0.2) :
-        timeout = timeit.default_timer () + delay
-        while (True) :
-            if self.serial_connection.out_waiting == 0 :
-                return 0 # success
-            if timeit.default_timer () > timeout :
-                if self.debug : print ("Writing timed out")
-                return 1 # failure
-        return 2 # should not get here
+    # superceded by direct calculation of time plus padding
+    #def WaitToSendData (self, delay=0.2) :
+    #    timeout = timeit.default_timer () + delay
+    #    while (True) :
+    #        if self.serial_connection.out_waiting == 0 :
+    #            return 0 # success
+    #        if timeit.default_timer () > timeout :
+    #            if self.debug : print ("Writing timed out")
+    #            return 1 # failure
+    #    return 2 # should not get here
 
     # this function only does the actual write command on the serial port
     # the behavior depends on self.isMacFTDI
@@ -253,24 +259,26 @@ class MCA8000A :
     # and pauses to let the FTDI chip finish sending each byte
     # this is because of an apparent bug in the MacOS FTDI driver
     def SendCommandBytes (self, commandbytes) :
-        if self.isMacFTDI :
-            single_byte_delay = 10.0 / self.baudrate # time to send 10 bits
-            for i in range (len (commandbytes)) :
-                self.serial_connection.write ((bytes([commandbytes[i]])))
-                # the syntax of the preceding line is needed to
-                # make a bytes object of length one
-                # a single element of a bytearray i.e. commandbytes[i] is an int
-                # so we make that into a list with length one
-                # and cast it as bytes
-                stat = self.WaitToSendData ()
-                if stat : return stat
-                wait (single_byte_delay)
-            return 0
-        else :
-            self.serial_connection.write (commandbytes)
-            stat = self.WaitToSendData ()
-            if stat : return stat
-            return 0
+        #if self.isMacFTDI :
+        #    single_byte_delay = 10.0 / self.baudrate # time to send 10 bits
+        #    for i in range (len (commandbytes)) :
+        #        self.serial_connection.write ((bytes([commandbytes[i]])))
+        #        # the syntax of the preceding line is needed to
+        #        # make a bytes object of length one
+        #        # a single element of a bytearray i.e. commandbytes[i] is an int
+        #        # so we make that into a list with length one
+        #        # and cast it as bytes
+        #        stat = self.WaitToSendData ()
+        #        if stat : return stat
+        #        wait (single_byte_delay)
+        #    return 0
+        #else :
+        self.serial_connection.write (commandbytes)
+        wait (len (commandbytes) * self.bits_per_byte
+              / self.serial_connection.baudrate + self.send_padding)
+        #stat = self.WaitToSendData ()
+        #if stat : return stat
+        return 0
         
     def SendCommand (self, command, n_retries=10) :
         for i in range (n_retries) :
@@ -290,15 +298,17 @@ class MCA8000A :
             # send data
             #self.serial_connection.write (command)
             self.SendCommandBytes (command)
+
             
-            if self.WaitToSendData () :
-                if self.debug : print ("Writing data failed")
-                self.ResetRTS ()
-                continue # retry
+            #if self.WaitToSendData () :
+            #    if self.debug : print ("Writing data failed")
+            #    self.ResetRTS ()
+            #    continue # retry
             
             # make sure the buffer for receiving MCA data is cleared
+            print ("CTS before purge:", self.serial_connection.cts, "old:", self.oldcts)
             self.PurgeRX ()
-
+            print ("CTS after purge:", self.serial_connection.cts)
             # check for 2nd CTS flip
             if self.WaitForCTSFlip () :
                 if self.debug : print ("Second CTS flip failed")
@@ -350,8 +360,9 @@ class MCA8000A :
         wait (0.1)
         # send command
         self.SetDTR ()
-        if self.isMacFTDI :
-            wait (self.DTR_Delay)
+        #wait (self.DTR_Delay) # should work for linux too
+        #if self.isMacFTDI :
+        #    wait (self.DTR_Delay)
         # DTR and RTS are supposed to be set simultaneously,
         # but on M1 mac I found that we need a lag
         # seems to depend a bit on the MCA, but 10 ms
