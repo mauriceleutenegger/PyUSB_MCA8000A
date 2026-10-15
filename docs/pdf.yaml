@@ -1,0 +1,11 @@
+# Pandoc settings for printing the docs to PDF:
+#   pandoc docs/protocol.md -d docs/pdf.yaml -o protocol.pdf
+from: markdown-smart+gfm_auto_identifiers   # GitHub-style anchors and straight quotes, as on GitHub
+pdf-engine: xelatex
+variables:
+  geometry: margin=2cm
+  fontsize: 10pt
+  colorlinks: true
+  monofont: Menlo
+include-in-header:
+  - docs/pdf-header.tex

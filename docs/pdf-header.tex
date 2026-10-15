@@ -1,0 +1,10 @@
+% Characters the default LaTeX fonts lack. The emoji markers (see protocol.md section 1)
+% are printed as bracketed words.
+\usepackage{newunicodechar}
+\newunicodechar{🔬}{\textsf{[observed]}}
+\newunicodechar{❓}{\textsf{[open]}}
+\newunicodechar{⚠}{\textsf{[conflict]}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{⁶}{\textsuperscript{6}}
