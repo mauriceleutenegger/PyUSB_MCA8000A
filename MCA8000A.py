@@ -380,12 +380,39 @@ class MCA8000A :
 
         self.PurgeRX () # throw out whatever's in there
 
-        self.ReceiveStatusFromPrompt ()
-        # SHOULDN'T IT RESET RTS?
+        stat = self.EndDataStream ()
+        if stat :
+            print ("SetBaudRate: couldn't end data stream")
+            return 1 # failure
         # get status to confirm it's OK
-        #self.GetStatus () # FIX ME
-        return 0
-    
+        return self.ReceiveStatusFromPrompt ()
+
+    # The baud rate command is the old SEND DATA command (00h), and the MCA
+    # answers it: while RTS is low it streams the status and then all of
+    # memory (17 s at 57600). A status prompt stops the stream at 57600,
+    # but at 115200 the MCA then ignores status prompts until it receives
+    # a byte, and leftover bytes can end up in front of the next data
+    # transfer at either rate. A 1-word data request, sent with CTS
+    # sampled after RTS has been low, ends the stream cleanly.
+    # See docs/protocol.md section 5.
+    def EndDataStream (self, n_retries=3) :
+        command = Command_SendData (0, 1)
+        for i in range (n_retries) :
+            self.ResetRTS ()
+            wait (0.001)
+            self.RememberCTS ()
+            self.SetRTS ()
+            stat = self.WaitForCTSFlip ()
+            if not stat :
+                self.SendCommandBytes (command)
+                stat = self.WaitForCTSFlip ()
+            self.ResetRTS ()
+            wait (0.3) # let the rest of the stream and the reply arrive
+            self.PurgeRX ()
+            if not stat :
+                return 0 # success
+        return 1 # failure
+
 
     def PromptForStatus (self) :
         self.ResetRTS ()

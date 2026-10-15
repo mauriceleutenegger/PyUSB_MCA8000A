@@ -6,8 +6,9 @@ Checks, for each rate:
 And separately:
   3. A baud change sent while the MCA is *not* at 4800 leaves it at 4800.
 
-Observed 2026-10-13 (S/N 1224, FTDI adapter, macOS): 9600-57600 work; 115200 does
-not (CTS handshakes still work, but no bytes are received at any host rate). Read-only.
+Observed 2026-10-13 (S/N 1224, FTDI adapter, macOS): 9600-57600 work; 115200 did
+not until SetBaudRate ended the data stream that the baud command starts (fixed
+2026-10-15, see docs/protocol.md section 5). Read-only.
 """
 
 import time
@@ -63,7 +64,7 @@ def main():
                        'PASS' if ok_count == args.repeat else 'FAIL')
 
         # 3. baud change requested from a rate other than 4800
-        working = [r for r in rates if r not in (4800, 115200)]
+        working = [r for r in rates if r != 4800]
         if len(working) >= 2:
             a, b = working[0], working[-1]
             reopen(mca)

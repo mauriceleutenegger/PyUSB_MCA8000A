@@ -37,6 +37,6 @@ non-zero lock.
 
 - Opening the port resets the MCA to 4800 baud. Every script starts from there and
   switches to `--baud` (default 57600).
-- 115200 baud didn't work on the test unit (S/N 1224). See `check_baud.py`.
+- 115200 baud works only with the `SetBaudRate` fix of 2026-10-15 (see `docs/protocol.md` §5).
 - On battery, the MCA powers down after a few idle minutes. Run with `--power-on` if a
   script can't find it.

@@ -42,8 +42,7 @@ def make_parser(description):
     p.add_argument('--port', default=DEFAULT_PORT,
                    help='serial device (default: $MCA_PORT or %(default)s)')
     p.add_argument('--baud', type=int, default=57600,
-                   help='baud rate to switch the MCA to (default: %(default)s; '
-                        '115200 did not work on the test unit, see check_baud.py)')
+                   help='baud rate to switch the MCA to (default: %(default)s)')
     p.add_argument('--power-on', action='store_true',
                    help='run the remote power-on sequence before connecting')
     return p
