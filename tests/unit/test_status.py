@@ -80,7 +80,6 @@ def test_threshold(mca):
     assert mca.Threshold == 0x1234
 
 
-@pytest.mark.xfail(reason='I-13: absolute-peak bit (15) kept in Threshold', strict=True)
 def test_threshold_excludes_absolute_peak_bit(mca):
     mca.UpdateStatusFromData(make_status(threshold_word=0x8000 | 64), True)
     assert mca.Threshold == 64

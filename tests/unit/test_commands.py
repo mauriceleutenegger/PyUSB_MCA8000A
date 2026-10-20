@@ -59,6 +59,13 @@ def test_control(flags, threshold):
         with_checksum(0x01, flags, threshold & 0xFF, threshold >> 8)
 
 
+@pytest.mark.parametrize('threshold', [0, 64, 16383])
+def test_control_absolute_peak(threshold):
+    # absolute peak mode: bit 7 of byte 3 (threshold word bit 15, §10)
+    assert lib.Command_Control(0x13, threshold, absolute_peak=True) == \
+        with_checksum(0x01, 0x13, threshold & 0xFF, 0x80 | threshold >> 8)
+
+
 @pytest.mark.parametrize('threshold, exc', [(-1, ValueError), (16384, ValueError),
                                             (1.0, TypeError)])
 def test_control_rejects_bad_threshold(threshold, exc):

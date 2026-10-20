@@ -52,7 +52,7 @@ def Command_SendData (start_channel, words_requested,
     command = bytearray ([command_byte, byte1, byte2, byte3])
     return addCheckSum (command)
     
-def Command_Control (flags, threshold) :
+def Command_Control (flags, threshold, absolute_peak=False) :
     # should check type of flags (needs to be 1 byte)
     if not isinstance (threshold, int) :
         raise TypeError ('ThresholdNotInt')
@@ -63,6 +63,7 @@ def Command_Control (flags, threshold) :
     command_byte = 1
     byte2 = threshold % 256 # lower byte
     byte3 = threshold // 256 # upper byte
+    if absolute_peak : byte3 += 128 # bit 15 of the threshold word
     command = bytearray ([command_byte, flags, byte2, byte3])
     return addCheckSum (command)
 
@@ -146,6 +147,7 @@ class MCA8000A :
         self.LiveTime = 0.0
         self.BatteryStatus = 0
         self.Threshold = 0
+        self.isAbsolutePeak = False # absolute (True) or first peak mode
         # status from flags
         self.flags = 0 # store flags byte as well
         self.ADCResolution = 2**14
@@ -506,7 +508,10 @@ class MCA8000A :
         self.LiveTime = int.from_bytes (data[12:15], "big")
         LiveTime75 = data[15]
         self.LiveTime += (1.0 - LiveTime75 / 75)
-        self.Threshold = int.from_bytes (data[16:18], "big")
+        ThresholdWord = int.from_bytes (data[16:18], "big")
+        self.Threshold = ThresholdWord & 0x7FFF # threshold is bits 0-14
+        self.isAbsolutePeak = bool (ThresholdWord >> 15)
+        # absolute peak mode is bit 15
         self.flags = data[18]
         # parse flags
         ADCRes_bits = self.flags & 0b111 # resolution info is in bits 0-2
@@ -635,7 +640,8 @@ class MCA8000A :
         
     def SetThreshold (self, threshold) :
         # user existing flags variable
-        command = Command_Control (self.flags, threshold)         
+        command = Command_Control (self.flags, threshold,
+                                   self.isAbsolutePeak)         
         stat = self.SendCommand (command)
         if stat :
             print ("SetThreshold: error sending command")
@@ -710,7 +716,8 @@ class MCA8000A :
         if self.debug : print (ADCRes_bits)
         newflags = (0b11111000 & self.flags) + (0b00000111 & ADCRes_bits)
         if self.debug : print (newflags)
-        command = Command_Control (newflags, self.Threshold)         
+        command = Command_Control (newflags, self.Threshold,
+                                   self.isAbsolutePeak)         
         stat = self.SendCommand (command)
         if stat :
             print ("SetADCResolution: error sending command")
@@ -724,7 +731,8 @@ class MCA8000A :
     # delay sets time between sending start and asking for status
     def StartAcquisition (self, delay=1.0) :
         newflags = self.flags | 0b10000 # set bit 4 to one
-        command = Command_Control (newflags, self.Threshold)         
+        command = Command_Control (newflags, self.Threshold,
+                                   self.isAbsolutePeak)         
         stat = self.SendCommand (command)
         if stat :
             print ("StartAcquisition: error sending command")
@@ -739,7 +747,8 @@ class MCA8000A :
     # delay sets time between sending stop and asking for status
     def StopAcquisition (self, delay=0.2) :
         newflags = self.flags & 0b11101111 # set bit 4 to zero
-        command = Command_Control (newflags, self.Threshold)         
+        command = Command_Control (newflags, self.Threshold,
+                                   self.isAbsolutePeak)         
         stat = self.SendCommand (command)
         if stat :
             print ("StopAcquisition: error sending command")

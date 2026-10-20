@@ -755,14 +755,14 @@ MCAs** (`MonitorThreadProc`: `!isUSBMCA`). [PY] has no keep-alive.
 |---|---|
 | Remote power-on + USB detection | Implemented (`PowerOn`) |
 | Baud rate setting | Implemented (`SetBaudRate`, `Initialize`) |
-| Status prompt / parse | Implemented (`PromptForStatus`, `ReceiveStatus*`, `UpdateStatusFromData`). Group number and absolute-peak bit not parsed. |
+| Status prompt / parse | Implemented (`PromptForStatus`, `ReceiveStatus*`, `UpdateStatusFromData`). Group number not parsed; absolute-peak bit parsed (`isAbsolutePeak`) and kept by CONTROL commands since 2026-10-19. |
 | Data readout | Partial (`ReceiveChannelData`): first 1024 channels only, start channel 0 only. (Until 2026-10-19 the words were decoded as signed 16-bit, which failed with numpy ≥ 2.) |
 | Start / stop acquisition | Implemented |
 | ADC resolution | Implemented (`SetADCResolution`) |
 | Threshold | Implemented (`SetThreshold`) |
 | Preset time | Implemented (`SetPresetTime`) |
 | Live / real timer select | Not implemented |
-| Absolute / first peak mode | Not implemented |
+| Absolute / first peak mode | Read only (`isAbsolutePeak`); no setter |
 | Battery type | Not implemented (read only) |
 | Delete data / time / both | Implemented |
 | Set group | Not implemented |
