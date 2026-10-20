@@ -33,7 +33,6 @@ TICK = 1 / 75
 # after START the MCA is busy ~1 s (no status) and only then starts counting; STOP takes
 # effect at once (S/N 1224, 2026-10-19, hwcheck/results/hw-state-20261019/probe_start_lag)
 START_LAG = 0.97
-I14 = 'I-14: CONTROL resends stale cached flags'
 
 # settings Scratch.restore puts back (and the session check compares)
 SETTINGS = ('serial', 'group', 'preset', 'threshold', 'absolute_peak', 'flags')
@@ -394,8 +393,8 @@ SCENARIOS = [
     pytest.param(resolution, marks=pytest.mark.hw_any_memory, id='resolution'),
     pytest.param(start_stop, marks=pytest.mark.hw_delete, id='start_stop'),
     pytest.param(preset_stop, marks=pytest.mark.hw_delete, id='preset_stop'),
-    pytest.param(stale_flags_restart, id='stale_flags_restart', marks=[
-        pytest.mark.hw_delete, pytest.mark.xfail(reason=I14, strict=True)]),
+    pytest.param(stale_flags_restart, marks=pytest.mark.hw_delete,
+                 id='stale_flags_restart'),
     pytest.param(delete_time, marks=pytest.mark.hw_delete, id='delete_time'),
     pytest.param(delete_data, marks=pytest.mark.hw_delete, id='delete_data'),
     pytest.param(delete_data_and_time, marks=pytest.mark.hw_delete,

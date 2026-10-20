@@ -639,7 +639,12 @@ class MCA8000A :
         return 0
         
     def SetThreshold (self, threshold) :
-        # user existing flags variable
+        # read the MCA's current flags and threshold first (as the DLL
+        # does), so that stale cached values aren't written back
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("SetThreshold: error reading status")
+            return stat
         command = Command_Control (self.flags, threshold,
                                    self.isAbsolutePeak)         
         stat = self.SendCommand (command)
@@ -713,6 +718,12 @@ class MCA8000A :
                 ADCRes_bits = i
                 break
         if roundup : ADCRes_bits -= 1
+        # read the MCA's current flags and threshold first (as the DLL
+        # does), so that stale cached values aren't written back
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("SetADCResolution: error reading status")
+            return stat
         if self.debug : print (ADCRes_bits)
         newflags = (0b11111000 & self.flags) + (0b00000111 & ADCRes_bits)
         if self.debug : print (newflags)
@@ -730,6 +741,12 @@ class MCA8000A :
 
     # delay sets time between sending start and asking for status
     def StartAcquisition (self, delay=1.0) :
+        # read the MCA's current flags and threshold first (as the DLL
+        # does), so that stale cached values aren't written back
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("StartAcquisition: error reading status")
+            return stat
         newflags = self.flags | 0b10000 # set bit 4 to one
         command = Command_Control (newflags, self.Threshold,
                                    self.isAbsolutePeak)         
@@ -746,6 +763,12 @@ class MCA8000A :
 
     # delay sets time between sending stop and asking for status
     def StopAcquisition (self, delay=0.2) :
+        # read the MCA's current flags and threshold first (as the DLL
+        # does), so that stale cached values aren't written back
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("StopAcquisition: error reading status")
+            return stat
         newflags = self.flags & 0b11101111 # set bit 4 to zero
         command = Command_Control (newflags, self.Threshold,
                                    self.isAbsolutePeak)         

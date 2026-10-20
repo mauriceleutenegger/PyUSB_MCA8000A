@@ -42,7 +42,6 @@ def test_preset_stops_acquisition(connected, sim, clock):
     assert connected.RealTime == pytest.approx(3.0, abs=1 / 75)
 
 
-@pytest.mark.xfail(reason='I-14: CONTROL resends stale cached flags', strict=True)
 def test_set_threshold_after_preset_stop_sends_stopped_flags(connected, sim, clock):
     connected.SetPresetTime(3)
     connected.StartAcquisition()                   # cached flags: acquiring
@@ -54,7 +53,6 @@ def test_set_threshold_after_preset_stop_sends_stopped_flags(connected, sim, clo
     assert not control[-1][1] & 0x10
 
 
-@pytest.mark.xfail(reason='I-14', strict=True)
 def test_stop_keeps_settings_changed_elsewhere(connected, sim):
     connected.StartAcquisition()
     sim.flags |= 0x08                              # e.g. set from another program

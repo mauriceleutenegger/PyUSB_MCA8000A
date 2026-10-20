@@ -660,7 +660,8 @@ Notes:
   (C `WORD`), as does [PY].
 - **Commands that start, stop or change the resolution, timer, battery type or peak mode** are
   all CONTROL with modified flags and threshold. The DLL always reads the status first and
-  sends back the fresh values. [PY] sends its last-known `self.flags` / `self.Threshold`.
+  sends back the fresh values. So does [PY] since 2026-10-19 (before, it sent its last-known
+  `self.flags` / `self.Threshold`, which after e.g. a preset stop still said "acquiring").
 - **Start time stamp on start.** When asked to, the DLL's start-acquisition sends SET START
   TIME, then SET START DATE (1 ms apart), then the CONTROL command. [DTP p.3] says the computer
   "must" set the start stamp every time acquisition is started, but nothing breaks if it
