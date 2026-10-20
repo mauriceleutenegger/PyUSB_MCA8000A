@@ -108,16 +108,26 @@ def Command_PresetTime (preset) :
     return addCheckSum (command)
     
 class MCA8000A :
-    def __init__ (self, device_path, baudrate=4800) :
+    # serial_connection: an already open port object to use instead of opening
+    # device_path (e.g. a simulated port for testing). It is set to the same
+    # line settings as a port opened here.
+    def __init__ (self, device_path, baudrate=4800, serial_connection=None) :
         #, isMacFTDI=False) :
         self.device_path = device_path
         self.baudrate = baudrate # this doesn't do anything right now
         #self.isMacFTDI = isMacFTDI
         #self.DTR_Delay = 0.01 # parameter used for SetBaudRate on Mac
         # should probably get rid of it
-        self.serial_connection = serial.Serial \
-            (self.device_path, baudrate=4800, parity='E',
-             timeout=0.2, write_timeout=0.2)
+        if serial_connection is None :
+            self.serial_connection = serial.Serial \
+                (self.device_path, baudrate=4800, parity='E',
+                 timeout=0.2, write_timeout=0.2)
+        else :
+            self.serial_connection = serial_connection
+            self.serial_connection.baudrate = 4800
+            self.serial_connection.parity = 'E'
+            self.serial_connection.timeout = 0.2
+            self.serial_connection.write_timeout = 0.2
         c = self.serial_connection
         self.bits_per_byte = 1 + c.bytesize + (c.parity !='N') + c.stopbits
         self.send_padding = 0.02
