@@ -16,13 +16,13 @@ METHODS = [
     ('StartAcquisition', lambda m: m.StartAcquisition(), 0x01, 1.0, True,
      'StartAcquisition'),
     ('StopAcquisition', lambda m: m.StopAcquisition(), 0x01, 0.2, True, 'StopAcquisition'),
-    ('SetPresetTime', lambda m: m.SetPresetTime(7), 0x02, 0.2, False, 'PresetTime'),
+    ('SetPresetTime', lambda m: m.SetPresetTime(7), 0x02, 0.2, False, 'SetPresetTime'),
     ('DeleteDataAndTime', lambda m: m.DeleteDataAndTime(), 0x05, 0.2, False,
      'DeleteDataAndTime'),
     ('DeleteData', lambda m: m.DeleteData(), 0x05, 0.2, False, 'DeleteData'),
     ('DeleteTime', lambda m: m.DeleteTime(), 0x05, 0.2, False, 'DeleteTime'),
     ('SetLock', lambda m: m.SetLock(0x1234), 0x75, 0.0, False, 'SetLock'),
-    ('SetLockToZero', lambda m: m.SetLockToZero(), 0x75, 4.0, False, 'SetLock'),
+    ('SetLockToZero', lambda m: m.SetLockToZero(), 0x75, 4.0, False, 'SetLockToZero'),
 ]
 CASES = [pytest.param(*m[1:], id=m[0]) for m in METHODS]
 

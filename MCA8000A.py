@@ -638,52 +638,50 @@ class MCA8000A :
         self.ChannelData[0:MaxChannels] = self.RawChannelData[0:MaxChannels]
         return 0
         
+    # Send a command, wait, and read the status that shows its effect.
+    # name is used in error messages; receive reads the status
+    # (default ReceiveStatusFromPrompt).
+    def SendCommandAndUpdate (self, name, command, delay=0.0, receive=None) :
+        stat = self.SendCommand (command)
+        if stat :
+            print ("{}: error sending command".format (name))
+            return stat
+        if delay : wait (delay)
+        if receive is None : receive = self.ReceiveStatusFromPrompt
+        stat = receive ()
+        if stat :
+            print ("{}: error updating status".format (name))
+            return stat
+        return 0
+
+    # CONTROL command built from the MCA's current flags and threshold:
+    # read them first (as the DLL does), so that stale cached values aren't
+    # written back; then clear clear_flags and set set_flags.
+    def SendControl (self, name, set_flags=0, clear_flags=0, threshold=None,
+                     delay=0.0) :
+        stat = self.ReceiveStatusFromPrompt ()
+        if stat :
+            print ("{}: error reading status".format (name))
+            return stat
+        newflags = (self.flags & ~clear_flags & 0xFF) | set_flags
+        if self.debug : print ("{}: flags {}".format (name, newflags))
+        if threshold is None : threshold = self.Threshold
+        command = Command_Control (newflags, threshold, self.isAbsolutePeak)
+        return self.SendCommandAndUpdate (name, command, delay)
+
     # The threshold should not exceed half the resolution. Larger values are
     # left to the MCA, which clamps them to resolution/2 - 1 (observed at
     # 2048); the status read afterwards shows the value actually set.
     def SetThreshold (self, threshold) :
-        # read the MCA's current flags and threshold first (as the DLL
-        # does), so that stale cached values aren't written back
-        stat = self.ReceiveStatusFromPrompt ()
-        if stat :
-            print ("SetThreshold: error reading status")
-            return stat
-        command = Command_Control (self.flags, threshold,
-                                   self.isAbsolutePeak)         
-        stat = self.SendCommand (command)
-        if stat :
-            print ("SetThreshold: error sending command")
-            return stat
-        stat = self.ReceiveStatusFromPrompt ()
-        if stat :
-            print ("SetThreshold: error updating status")
-            return stat
-        return 0
+        return self.SendControl ("SetThreshold", threshold=threshold)
 
     def SetLock (self, lock_number) :
         command = Command_MCALock (lock_number)
-        stat = self.SendCommand (command)
-        if stat :
-            print ("SetLock: error sending command")
-            return stat
-        stat = self.ReceiveStatusFromPrompt ()
-        if stat :
-            print ("SetLock: error updating status")
-            return stat
-        return 0
+        return self.SendCommandAndUpdate ("SetLock", command)
 
     def SetLockToZero (self) :
         command = Command_MCALock (0)
-        stat = self.SendCommand (command)
-        if stat :
-            print ("SetLock: error sending command")
-            return stat
-        wait (4.0)
-        stat = self.ReceiveStatusFromPrompt ()
-        if stat :
-            print ("SetLock: error updating status")
-            return stat
-        return 0
+        return self.SendCommandAndUpdate ("SetLockToZero", command, 4.0)
 
     # I think you can't just set public.
     # Probably you have to unlock with a code.
@@ -721,70 +719,19 @@ class MCA8000A :
                 ADCRes_bits = i
                 break
         if roundup : ADCRes_bits -= 1
-        # read the MCA's current flags and threshold first (as the DLL
-        # does), so that stale cached values aren't written back
-        stat = self.ReceiveStatusFromPrompt ()
-        if stat :
-            print ("SetADCResolution: error reading status")
-            return stat
         if self.debug : print (ADCRes_bits)
-        newflags = (0b11111000 & self.flags) + (0b00000111 & ADCRes_bits)
-        if self.debug : print (newflags)
-        command = Command_Control (newflags, self.Threshold,
-                                   self.isAbsolutePeak)         
-        stat = self.SendCommand (command)
-        if stat :
-            print ("SetADCResolution: error sending command")
-            return stat
-        stat = self.ReceiveStatusFromPrompt ()
-        if stat :
-            print ("SetADCResolution: error updating status")
-            return stat
-        return 0
+        return self.SendControl ("SetADCResolution", set_flags=ADCRes_bits,
+                                 clear_flags=0b111)
 
     # delay sets time between sending start and asking for status
     def StartAcquisition (self, delay=1.0) :
-        # read the MCA's current flags and threshold first (as the DLL
-        # does), so that stale cached values aren't written back
-        stat = self.ReceiveStatusFromPrompt ()
-        if stat :
-            print ("StartAcquisition: error reading status")
-            return stat
-        newflags = self.flags | 0b10000 # set bit 4 to one
-        command = Command_Control (newflags, self.Threshold,
-                                   self.isAbsolutePeak)         
-        stat = self.SendCommand (command)
-        if stat :
-            print ("StartAcquisition: error sending command")
-            return stat
-        wait (delay)
-        stat = self.ReceiveStatusFromPrompt ()
-        if stat :
-            print ("StartAcquisition: error updating status")
-            return stat
-        return 0
+        return self.SendControl ("StartAcquisition", set_flags=0b10000,
+                                 delay=delay) # bit 4
 
     # delay sets time between sending stop and asking for status
     def StopAcquisition (self, delay=0.2) :
-        # read the MCA's current flags and threshold first (as the DLL
-        # does), so that stale cached values aren't written back
-        stat = self.ReceiveStatusFromPrompt ()
-        if stat :
-            print ("StopAcquisition: error reading status")
-            return stat
-        newflags = self.flags & 0b11101111 # set bit 4 to zero
-        command = Command_Control (newflags, self.Threshold,
-                                   self.isAbsolutePeak)         
-        stat = self.SendCommand (command)
-        if stat :
-            print ("StopAcquisition: error sending command")
-            return stat
-        wait (delay)
-        stat = self.ReceiveStatusFromPrompt ()
-        if stat :
-            print ("StopAcquisition: error updating status")
-            return stat
-        return 0
+        return self.SendControl ("StopAcquisition", clear_flags=0b10000,
+                                 delay=delay) # bit 4
 
     # After DELETE the MCA may take up to 2 s to respond again (DTP p.10;
     # the DLL sleeps R/8 ms + 256 ms, 2.3 s at 16k), so keep prompting
@@ -798,55 +745,22 @@ class MCA8000A :
 
     def DeleteDataAndTime (self, delay=0.2) :
         command = Command_DeleteDataAndTime () # default is both
-        stat = self.SendCommand (command)
-        if stat :
-            print ("DeleteDataAndTime: error sending command")
-            return stat
-        wait (delay)
-        stat = self.ReceiveStatusAfterDelete ()
-        if stat :
-            print ("DeleteDataAndTime: error updating status")
-            return stat
-        return 0
+        return self.SendCommandAndUpdate ("DeleteDataAndTime", command, delay,
+                                          self.ReceiveStatusAfterDelete)
 
     def DeleteData (self, delay=0.2) :
         command = Command_DeleteDataAndTime (delete_time=False)
-        stat = self.SendCommand (command)
-        if stat :
-            print ("DeleteData: error sending command")
-            return stat
-        wait (delay)
-        stat = self.ReceiveStatusAfterDelete ()
-        if stat :
-            print ("DeleteData: error updating status")
-            return stat
-        return 0
+        return self.SendCommandAndUpdate ("DeleteData", command, delay,
+                                          self.ReceiveStatusAfterDelete)
 
     def DeleteTime (self, delay=0.2) :
         command = Command_DeleteDataAndTime (delete_data=False)
-        stat = self.SendCommand (command)
-        if stat :
-            print ("DeleteTime: error sending command")
-            return stat
-        wait (delay)
-        stat = self.ReceiveStatusAfterDelete ()
-        if stat :
-            print ("DeleteTime: error updating status")
-            return stat
-        return 0
+        return self.SendCommandAndUpdate ("DeleteTime", command, delay,
+                                          self.ReceiveStatusAfterDelete)
 
     def SetPresetTime (self, time, delay=0.2) :
         command = Command_PresetTime (time)
-        stat = self.SendCommand (command)
-        if stat :
-            print ("PresetTime: error sending command")
-            return stat
-        wait (delay)
-        stat = self.ReceiveStatusFromPrompt ()
-        if stat :
-            print ("PresetTime: error updating status")
-            return stat
-        return 0
+        return self.SendCommandAndUpdate ("SetPresetTime", command, delay)
 
     def Initialize (self, baudrate=115200) :
         stat = self.ReceiveStatusFromPrompt ()
