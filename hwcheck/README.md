@@ -1,7 +1,10 @@
 # Hardware checks
 
 Scripts that answer protocol questions on a real MCA8000A (see `docs/protocol.md` §16).
-They are the seed of the hardware tier of the test suite.
+They were the seed of the hardware tier of the test suite (`tests/hw/`, see
+`tests/README.md`), which now covers most of what `check_probe`, `check_block_count`,
+`check_cts_ack`, `check_baud`, `check_preset` and `check_powerdown` check. The scripts stay as
+investigation tools: they print and save more detail than a pass/fail test.
 
 They build commands and parse responses themselves, so known bugs in `MCA8000A.py` don't
 affect the results. The library is used only for the handshakes (`SendCommand`, status
@@ -27,6 +30,8 @@ The port defaults to `$MCA_PORT`. Use `--power-on` if the MCA is off.
 | `check_baud.py` | Baud-rate setting, DTR delay (I-17) | No (baud only) | ~2 min |
 | `check_powerdown.py` | Auto power-down and recovery (I-20). Battery only. | No | ~6 min |
 | `check_preset.py --yes` | Preset 0 = run until stopped? Preset stop; stale flags (I-14) | **Yes**: scratch group, clears its time; restores group and preset | ~30 s |
+| `check_tx_timing.py` | macOS driver bugs in `timing.md`: RX purge discards unsent output, `out_waiting`, `flush()`. Run once per driver/port. | No | ~5 min |
+| `check_tx_timing.py --bulk` | Same, with kB of data. **MCA unplugged from the cable.** | No | ~2 min |
 | `check_lock_zero.py` | Lock 0 on an already-locked unit (I-21) | **Yes: may wipe data** | ~15 s |
 
 `check_lock_zero.py` refuses to run unless the serial number matches, the unit reports

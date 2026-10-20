@@ -128,18 +128,22 @@ handled by the cable/adapter and invisible to software.
 
 ### Host-side notes: FTDI on macOS
 
-See `timing.md` in this repository. On macOS with the FTDI driver:
+See `timing.md` in this repository. On macOS, with **both** FTDI's VCP driver and Apple's
+AppleUSBFTDI (🔬 `hwcheck/check_tx_timing.py`, 2026-10-19):
 
-- `out_waiting` always returns 0, even before the bytes have gone out, so it can't be used to
-  wait for a write to finish.
+- `out_waiting` returns 0 while bytes are still in flight (almost always after a 5-byte
+  write; always with kB pending), so it can't be used to wait for a write to finish.
+- `flush()` (tcdrain) returns at once, so it can't be used either.
 - `reset_input_buffer()` (purging the RX buffer) also discards **output that hasn't been sent
-  yet**.
+  yet**, apparently including bytes already in the chip's FIFO. A purge right after `write()`
+  lost the command every time at 4800 and 0.5–10 % of the time at 57600–115200.
 
 Together these mean a command can be purged before it's sent. [PY] therefore waits a computed
 fixed time after each write before doing anything else:
 `len(command) × bits_per_byte / baud + 20 ms`, where `bits_per_byte` = 1 start + 8 data +
 1 parity + 1 stop = 11. This matters wherever the protocol calls for an RX purge right after
-sending (§6, §7).
+sending (§6, §7). 🔬 With this wait, 1200/1200 commands arrived (both drivers, 4800–115200).
+The DLL purges RX *before* writing, which avoids the race altogether.
 
 ---
 
@@ -218,7 +222,8 @@ This doesn't matter for [PY], which only uses 00h for setting the baud rate.
 
 - **Opening the port resets the MCA to 4800 baud**, every time. pyserial raises DTR and RTS
   when it opens the port; DTR + RTS high is how baud-setting mode starts, which presumably
-  resets the rate.
+  resets the rate. Opening also counts as a status prompt: when RTS then goes low, the MCA
+  sends a 20-byte status.
 - **A baud change only works when sent at 4800.** Sent at any other rate, it leaves the MCA
   at 4800. This matches [DTP]'s "the serial port must be configured for 4800".
 - With [PY]'s sequence (no delay between DTR and RTS), switching to 9600, 19200, 38400 and
@@ -320,7 +325,11 @@ repeat up to 10 times:
 Differences from the DLL:
 
 - [PY] purges RX **after** writing, not before. It waits a fixed time first because of the
-  macOS purge bug (§3).
+  macOS purge bug (§3). The DLL originally purged after writing too; on 2009-04-02 Amptek
+  moved the purge in front of the write "to insure purge before slow prolific usb adapter
+  data" and commented out the one after (`Request.cpp:888-915`). Since then the DLL never
+  purges between the write and toggle #2. [PY]'s second purge, after toggle #2, is safe: the
+  MCA has the whole command by then and doesn't send until RTS goes low.
 - [PY] retries immediately. RTS is low only for as long as the next few calls take, versus
   ≥ 20 ms in the DLL and ≥ 100 µs in [DTP]. USB control-line latency probably stretches this
   in practice. ❓
@@ -398,6 +407,8 @@ reverses the whole buffer into a little-endian C struct, `PmcaStatusType`.)
   *next* data command), the field is the **sum of all channel data bytes sent in the previous
   transfer**. The DLL comment: "This is the only opportunity to get status with checksum.
   After status is sent PMCA clears the checksum."
+  🔬 Confirmed for a status prompt: after 40h for 64 words and then a prompt, the status of the
+  next 40h had 0 in this field, not the sum (3/3; without the prompt, the sum).
 - Otherwise (status prompts, after S/N-type commands 10h/50h/52h) it holds the **serial
   number and group**:
   - bytes 0–1: serial number (16-bit, MSB first)
@@ -422,10 +433,22 @@ T = 65536·T_2 + 256·T_1 + T_0 + (1 − T_75 / 75)        [seconds]
 the same value in ms: `(sec + 1)·1000 − T_75 / 0.075`. Real and live time can't be set by the
 host, only cleared (DELETE). Time is kept per group [API, "Clear time"].
 
+🔬 **Observed** (S/N 1224, 2026-10-19, raw commands, status polled every 0.25 s):
+- After a START (CONTROL with bit 4 set), the MCA answers no status prompts for about 1 s,
+  and real/live time start counting **0.97 s after the command** (2 runs, ±10 ms). STOP takes
+  effect within the poll interval. The clock rate is right (fit slope 0.999).
+  [PY]'s fixed 1 s wait in `StartAcquisition` matches the busy time; the [DLL] doesn't wait.
+- One status read while acquiring had a checksum off by one (sum 219, byte 218): a time byte
+  probably changed while the status was being sent. A checksum error while acquiring is
+  worth one retry.
+
 ### Threshold word
 
 - Bits 14–0: low-level threshold as a channel number. It "should not exceed half of the
   currently set resolution" [DTP p.3].
+  🔬 **Observed** (S/N 1224 at 2048 channels, 2026-10-19): the MCA **clamps** larger values
+  to R/2 − 1. CONTROL with 1024 … 16383 is accepted (toggle #2) and the status then reports
+  1023; 0 … 1023 are taken as sent. Not checked at other resolutions.
 - Bit 15: **absolute peak mode** (1) vs. first peak mode (0). This comes from the [DLL]/[API]
   `PmcaControlType` (`threshold:15; absolutePeak:1`). It isn't in [DTP]. The MCA powers up in
   first peak mode, so absolute peak mode must be set again after each power-on [API].
@@ -496,8 +519,17 @@ DLL comment says the NiCd values "do not match admca", so treat them as approxim
   | 2047 | 0 | 0A00h | preset 10 s |
 
   So the MCA seems to keep each group's times, preset, threshold and start stamp in the top
-  channels of that group's memory. Channel 1984 (= R − R/32) had lower word 2. ❓ To confirm,
-  change the preset and threshold and watch these channels change.
+  channels of that group's memory. Channel 1984 (= R − R/32) had lower word 2.
+
+  🔬 **Observed** (2026-10-19, memory read before and after the state tests): the MCA
+  **rewrites a group's last 4 channels when it switches group** (SET GROUP), with that
+  group's current values. Group 0's channel 2047 then read 0A58h (preset 10, and 58h = 88 =
+  the battery byte at the time) and 2044 read 0040_0309h (threshold 64; flags 03h in the
+  lower word, plus one unknown byte). Since the group number is kept when the resolution
+  changes, changing the resolution and then the group writes the parameters into the last
+  4 channels of whatever group that number means at the new resolution, i.e. into other
+  memory. At 2048 → 256 from group 15, that was channels 4092–4095 (the top of group 1 at
+  2048).
 
 ### Block data commands (USB protocol) [USB §3.2–3.8]
 
@@ -704,7 +736,7 @@ MCAs** (`MonitorThreadProc`: `!isUSBMCA`). [PY] has no keep-alive.
 | Receive timeout | — | nominal time + 0.75 s total | 0.4 s with no new bytes |
 | After DELETE | MCA may need up to 2 s | sleep R/8 + 256 ms (e.g. 384 ms at 1k, 2304 ms at 16k) | 0.2 s, then prompt with retries |
 | After lock 0 | — | — | 4 s |
-| After start acquisition | — | — | 1.0 s before status |
+| After start acquisition | — | — | 1.0 s before status (🔬 MCA busy, not counting, ~0.97 s) |
 | Baud change → first status | ≥ 100–200 µs | prompt immediately | 0.2 s |
 | Power-on DTR burst / settle | > 50 ms at 1–200 kHz / — | ~200 ms at 1 kHz / 3.8 s | 100 ms at 2 kHz / 3.9 s |
 | Auto power-down | ~3 min idle (keep-alive < 2 min) | keep-alive ~1 s (old MCA only) | none |
@@ -733,6 +765,9 @@ MCAs** (`MonitorThreadProc`: `!isUSBMCA`). [PY] has no keep-alive.
 | Keep-alive | Not implemented |
 | Old (non-USB) protocol | Not supported, by design |
 
+The test suite (`tests/`, see `tests/README.md`) checks the library against a simulated MCA
+and, optionally, a real one. Known bugs have strict-xfail tests.
+
 ---
 
 ## 16. Open questions
@@ -744,8 +779,9 @@ To be resolved by hardware tests or further reading; ❓ marks them in the text.
    transfers matched; a spectrum with many counts is needed to decide.
 3. ~~Does the second CTS toggle after a command mean "accepted"?~~ Yes (observed, §6). Also
    found: a wrong checksum is only rejected if it's *less than* the true sum.
-4. What do the top 1/32 channels contain (§9)? The top few appear to hold the group's times,
-   preset, threshold and start stamp (observed); the rest is still unknown.
+4. What do the top 1/32 channels contain (§9)? The last 4 hold the group's parameters and are
+   rewritten on a group switch (observed); the start stamp is just below; the rest is still
+   unknown.
 5. ~~Does a USB MCA on battery power down when idle?~~ Yes, and it recovers with power-on +
    baud setting; state is kept (observed, §13). Exact idle time not measured.
 6. What does the power-on sequence do to an MCA that's already on (§4)?
@@ -756,4 +792,8 @@ To be resolved by hardware tests or further reading; ❓ marks them in the text.
 9. ~~Does a preset time of 0 mean "run until stopped"?~~ Yes 🔬 (still acquiring after 5 s with
    preset 0; a 3 s real-time preset stopped at real 3.00 s, live 2.99 s).
 10. ~~Is a DTR→RTS delay needed when setting the baud rate?~~ No (observed, §5).
-11. Why doesn't 115200 baud work on the test unit (§5)?
+11. ~~Why doesn't 115200 baud work on the test unit (§5)?~~ Resolved: the baud command starts a
+    data stream that must be ended (fixed 2026-10-15).
+12. ~~What happens to a threshold above R/2 (§8)?~~ Clamped to R/2 − 1 (observed at 2048).
+13. Why does counting start 0.97 s after START (§8)? Does it depend on resolution or on a
+    preceding DELETE?
