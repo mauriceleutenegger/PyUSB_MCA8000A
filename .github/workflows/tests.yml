@@ -1,0 +1,26 @@
+# Tier 1 of the test suite (tests/README.md): the library against the simulated MCA.
+# No hardware; the tier-2 tests (tests/hw/) are skipped without --hw.
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tier1:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      # numpy >= 2: the I-3 tests are strict xfails that rely on numpy 2's overflow error
+      - run: python -m pip install "numpy>=2" pyserial pytest pytest-timeout
+      - run: python -m pytest

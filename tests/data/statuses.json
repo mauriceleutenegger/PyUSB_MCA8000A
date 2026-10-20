@@ -1,0 +1,21 @@
+{
+ "about": "20-byte status responses recorded from a real MCA8000A (USB), S/N 1224. 'expected' is decoded by hand from docs/protocol.md section 8 (times: s + 1 - f/75).",
+ "statuses": [
+  {
+   "raw": "04c8000000000a5a00000a4b00000906004003d7",
+   "source": "status prompt, 2026-10-19 (hwcheck/results/sim-contract-20261019/contract1.json)",
+   "expected": {"serial": 1224, "group": 0, "preset": 10, "battery": 90,
+                "real": 10.0, "live": 9.92, "threshold": 64, "flags": 3,
+                "resolution": 2048, "live_timer": false, "acquiring": false,
+                "protected": false, "nicad": false, "backup_bad": false}
+  },
+  {
+   "raw": "04c8000000000a5b00000a4b00000906004003d8",
+   "source": "status prompt, 2026-10-13 (hwcheck/results/probe-20261013-233834.json)",
+   "expected": {"serial": 1224, "group": 0, "preset": 10, "battery": 91,
+                "real": 10.0, "live": 9.92, "threshold": 64, "flags": 3,
+                "resolution": 2048, "live_timer": false, "acquiring": false,
+                "protected": false, "nicad": false, "backup_bad": false}
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+# Test configuration only, for now. Packaging metadata is improvement M-11.
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+# "." for MCA8000A.py, "tests" for the simulator package (mcasim)
+pythonpath = [".", "tests"]
+addopts = "-ra --strict-markers"
+xfail_strict = true
+# pytest-timeout: a hung unit test is a bug (the simulator runs on virtual time).
+# Hardware tests set their own limits.
+timeout = 60
+markers = [
+    "hw: tier 2, needs a real MCA (--hw)",
+    "hw_state: changes MCA settings and restores them (--hw-state)",
+    "hw_delete: acquires in a scratch group and deletes its data and time (--hw-delete)",
+    "hw_any_memory: may overwrite memory outside the scratch group (--hw-any-memory)",
+    "hw_slow: takes minutes, e.g. waits for power-down (--hw-slow)",
+]
