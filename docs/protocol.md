@@ -368,7 +368,10 @@ RTS rise with a CTS toggle. When RTS falls it transmits the 20-byte status.
 | 7 | read 20 bytes (`ReceiveStatusWithRetry`) | same |
 
 `ReceiveStatusWithRetry` [DLL and PY]: up to 10 times, read the status; if the read or the
-checksum fails, prompt again.
+checksum fails, prompt again. The [DLL] returns the result of the last *prompt*, so it reports
+success when every status read failed but the prompts' CTS toggles still came (e.g. host and
+MCA at different baud rates); `Request.cpp:1110-1124`. [PY] had the same flaw until
+2026-10-19 and now returns the last status read's result.
 
 ### Read timing
 

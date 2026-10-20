@@ -99,21 +99,17 @@ def test_status_retry_after_bad_checksum(connected, sim):
     assert connected.StatusChecksumErrors == 2
 
 
-@pytest.mark.xfail(reason='I-22', strict=True)
 def test_status_fails_when_mca_silent(connected, sim):
     sim.faults.silent_responses = 20
     assert connected.ReceiveStatusFromPrompt() != 0
 
 
-@pytest.mark.xfail(reason='I-22: success reported after all status reads failed',
-                   strict=True)
 def test_status_fails_when_every_status_is_bad(connected, sim):
     sim.faults.corrupt_status = 100             # CTS handshakes still work
     sim.preset = 9
     assert connected.ReceiveStatusFromPrompt() != 0
 
 
-@pytest.mark.xfail(reason='I-22', strict=True)
 def test_status_fails_at_wrong_baud_rate(connected, sim):
     connected.serial_connection.baudrate = 57600    # MCA at 115200: bytes garbled
     assert connected.ReceiveStatusFromPrompt() != 0

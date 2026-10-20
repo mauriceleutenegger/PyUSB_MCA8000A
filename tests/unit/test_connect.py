@@ -44,8 +44,6 @@ def test_initialize_fails_when_mca_off(mca, sim):
     assert mca.Initialize(baudrate=115200) != 0
 
 
-@pytest.mark.xfail(reason='I-22: Initialize reports success without a valid status',
-                   strict=True)
 def test_initialize_fails_when_status_never_valid(mca, sim):
     sim.faults.corrupt_status = 1000
     assert mca.Initialize(baudrate=115200) != 0

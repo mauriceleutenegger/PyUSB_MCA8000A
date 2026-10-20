@@ -448,10 +448,9 @@ class MCA8000A :
             stat = self.ReceiveStatus (hasSerialNumber=True)
             if not stat : # success
                 return stat
-            stat = self.PromptForStatus ()
-            if stat : # failure
+            if self.PromptForStatus () : # failure
                 break
-        return stat
+        return stat # the last ReceiveStatus result (nonzero here)
 
     def ReceiveStatus (self, hasSerialNumber=False) :
         stat, StatusData = self.ReceiveData (20)
