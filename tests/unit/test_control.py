@@ -87,8 +87,6 @@ def test_delete_while_mca_briefly_busy(connected, sim, busy):
     assert connected.DeleteDataAndTime() == 0
 
 
-@pytest.mark.xfail(reason='I-18: one 0.2 s prompt after 0.2 s; DTP allows up to 2 s',
-                   strict=True)
 def test_delete_at_16k_with_2s_busy(connected, sim):
     sim.flags &= ~7                                # 16384 channels
     connected.ReceiveStatusFromPrompt()

@@ -743,7 +743,7 @@ MCAs** (`MonitorThreadProc`: `!isUSBMCA`). [PY] has no keep-alive.
 | Prompt: RTS low before / after | — / — | 200 µs / 200 µs (+200 µs after purge) | 200 µs / 200 µs |
 | Data command → read status | "allow enough time" | 5 ms | 0.1 s |
 | Receive timeout | — | nominal time + 0.75 s total | 0.4 s with no new bytes |
-| After DELETE | MCA may need up to 2 s | sleep R/8 + 256 ms (e.g. 384 ms at 1k, 2304 ms at 16k) | 0.2 s, then prompt with retries |
+| After DELETE | MCA may need up to 2 s | sleep R/8 + 256 ms (e.g. 384 ms at 1k, 2304 ms at 16k) | 0.2 s, then prompt until a status arrives, for up to 2.5 s |
 | After lock 0 | — | — | 4 s |
 | After start acquisition | — | — | 1.0 s before status (🔬 MCA busy, not counting, ~0.97 s) |
 | Baud change → first status | ≥ 100–200 µs | prompt immediately | 0.2 s |

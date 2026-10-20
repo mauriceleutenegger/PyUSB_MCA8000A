@@ -786,6 +786,16 @@ class MCA8000A :
             return stat
         return 0
 
+    # After DELETE the MCA may take up to 2 s to respond again (DTP p.10;
+    # the DLL sleeps R/8 ms + 256 ms, 2.3 s at 16k), so keep prompting
+    # until a status arrives or the timeout has passed.
+    def ReceiveStatusAfterDelete (self, timeout=2.5) :
+        timeout = timeit.default_timer () + timeout
+        while (True) :
+            stat = self.ReceiveStatusFromPrompt ()
+            if not stat or timeit.default_timer () > timeout :
+                return stat
+
     def DeleteDataAndTime (self, delay=0.2) :
         command = Command_DeleteDataAndTime () # default is both
         stat = self.SendCommand (command)
@@ -793,7 +803,7 @@ class MCA8000A :
             print ("DeleteDataAndTime: error sending command")
             return stat
         wait (delay)
-        stat = self.ReceiveStatusFromPrompt ()
+        stat = self.ReceiveStatusAfterDelete ()
         if stat :
             print ("DeleteDataAndTime: error updating status")
             return stat
@@ -806,7 +816,7 @@ class MCA8000A :
             print ("DeleteData: error sending command")
             return stat
         wait (delay)
-        stat = self.ReceiveStatusFromPrompt ()
+        stat = self.ReceiveStatusAfterDelete ()
         if stat :
             print ("DeleteData: error updating status")
             return stat
@@ -819,7 +829,7 @@ class MCA8000A :
             print ("DeleteTime: error sending command")
             return stat
         wait (delay)
-        stat = self.ReceiveStatusFromPrompt ()
+        stat = self.ReceiveStatusAfterDelete ()
         if stat :
             print ("DeleteTime: error updating status")
             return stat
