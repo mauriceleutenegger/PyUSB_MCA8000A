@@ -62,8 +62,6 @@ def test_send_command_to_powered_down_mca(connected, sim, clock):
     assert 1.5 < clock.now - t0 < 3            # 10 x 0.2 s; 2.1 s observed (I-20)
 
 
-@pytest.mark.xfail(reason='I-16: no RTS-low pause between retries (DTP: >= 100 us)',
-                   strict=True)
 def test_rts_low_between_retries(connected, sim, clock):
     sim.faults.reject_commands = 2
     t0 = clock.now

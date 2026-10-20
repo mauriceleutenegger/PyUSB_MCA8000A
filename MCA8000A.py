@@ -293,6 +293,7 @@ class MCA8000A :
     def SendCommand (self, command, n_retries=10) :
         for i in range (n_retries) :
             if self.debug : print ("Retry number {}".format (i))
+            if i : wait (0.02) # RTS low between retries (DLL: 20 ms)
 
             # get ready
             self.PurgeTX ()

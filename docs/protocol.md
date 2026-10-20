@@ -312,6 +312,7 @@ RTS and without retrying. That looks like a DLL bug. Don't copy it.
 
 ```
 repeat up to 10 times:
+    (on a retry: wait 20 ms, RTS still low)
     purge TX; remember CTS
     RTS high
     wait ≤ 200 ms for CTS toggle #1      (on failure: RTS low, retry)
@@ -330,9 +331,8 @@ Differences from the DLL:
   data" and commented out the one after (`Request.cpp:888-915`). Since then the DLL never
   purges between the write and toggle #2. [PY]'s second purge, after toggle #2, is safe: the
   MCA has the whole command by then and doesn't send until RTS goes low.
-- [PY] retries immediately. RTS is low only for as long as the next few calls take, versus
-  ≥ 20 ms in the DLL and ≥ 100 µs in [DTP]. USB control-line latency probably stretches this
-  in practice. ❓
+- [PY] waits 20 ms with RTS low before a retry, as the DLL does ([DTP]: ≥ 100 µs). Until
+  2026-10-19 it retried immediately.
 - [PY] doesn't add the 200 µs wait after RTS goes low. Callers usually add their own delay.
 
 ---
@@ -731,7 +731,7 @@ MCAs** (`MonitorThreadProc`: `!isUSBMCA`). [PY] has no keep-alive.
 |---|---|---|---|
 | Timeout per CTS/DSR handshake | 110–165 ms per byte | 200 ms | 200 ms (`WaitForCTSFlip`) |
 | Command retries | ≥ 10 | 10 | 10 |
-| Pause between retries (RTS low) | ≥ 100 µs | 20 ms | ~0 (immediate) |
+| Pause between retries (RTS low) | ≥ 100 µs | 20 ms | 20 ms |
 | After a command, before the next | 100–200 µs | 200 µs | caller-specific delays (0.1–1 s) |
 | Write completion | wait for THR empty | synchronous byte-by-byte `WriteFile` | fixed: 11 bits/byte ÷ baud + 20 ms |
 | Prompt: RTS low before / after | — / — | 200 µs / 200 µs (+200 µs after purge) | 200 µs / 200 µs |
