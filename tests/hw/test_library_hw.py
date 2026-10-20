@@ -59,11 +59,11 @@ def test_status_matches_oracle(connected, oracle):
     assert m.StatusChecksumErrors == 0
 
 
-@pytest.mark.xfail(reason='I-15: prompt compares CTS with a stale reference', strict=True)
 def test_prompt_after_another_prompt(connected, oracle):
-    # One prompt not made by the library toggles CTS once. The MCA toggles CTS again
-    # within a fraction of a ms of RTS rising, back to the level the library remembers,
-    # so the library sees no change and times out (2026-10-19, 3/3).
+    # I-15: one prompt not made by the library toggles CTS once. The MCA toggles CTS
+    # again within a fraction of a ms of RTS rising, back to the level the library
+    # remembered, so before the fix the library saw no change and timed out
+    # (2026-10-19, 3/3).
     oracle_status(oracle)
     assert connected.ReceiveStatusFromPrompt() == 0
 

@@ -427,7 +427,7 @@ class MCA8000A :
     def PromptForStatus (self) :
         self.ResetRTS ()
         wait (0.0002)
-        # could add a line to ensure oldcts is set
+        self.RememberCTS () # sample CTS right before raising RTS, as the DLL does
         # could add a check for serial connection status
         self.SetRTS ()
         stat = self.WaitForCTSFlip ()

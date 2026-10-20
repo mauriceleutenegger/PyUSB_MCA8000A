@@ -360,7 +360,7 @@ RTS rise with a CTS toggle. When RTS falls it transmits the 20-byte status.
 | Step | [DLL] / [USB §3.13] | [PY] `PromptForStatus` |
 |---|---|---|
 | 1 | RTS low, wait 200 µs | RTS low, wait 200 µs |
-| 2 | read modem status (CTS reference) | — (uses the CTS remembered earlier) ❓ |
+| 2 | read modem status (CTS reference) | same (since 2026-10-19; before, the CTS remembered at the last handshake) |
 | 3 | RTS high | RTS high |
 | 4 | wait ≤ 200 ms for CTS toggle | same |
 | 5 | purge RX, wait 200 µs | purge RX |

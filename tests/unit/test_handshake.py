@@ -115,7 +115,6 @@ def test_status_fails_at_wrong_baud_rate(connected, sim):
     assert connected.ReceiveStatusFromPrompt() != 0
 
 
-@pytest.mark.xfail(reason='I-15: prompt compares CTS with a stale reference', strict=True)
 def test_prompt_fails_if_cts_changed_since_last_handshake(connected, sim):
     sim.power_down_now()
     sim.floating_cts = False
