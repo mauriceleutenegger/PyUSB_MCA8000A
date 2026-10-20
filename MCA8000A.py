@@ -317,9 +317,12 @@ class MCA8000A :
             #    continue # retry
             
             # make sure the buffer for receiving MCA data is cleared
-            print ("CTS before purge:", self.serial_connection.cts, "old:", self.oldcts)
+            if self.debug :
+                print ("CTS before purge:", self.serial_connection.cts,
+                       "old:", self.oldcts)
             self.PurgeRX ()
-            print ("CTS after purge:", self.serial_connection.cts)
+            if self.debug :
+                print ("CTS after purge:", self.serial_connection.cts)
             # check for 2nd CTS flip
             if self.WaitForCTSFlip () :
                 if self.debug : print ("Second CTS flip failed")
@@ -371,19 +374,14 @@ class MCA8000A :
         wait (0.1)
         # send command
         self.SetDTR ()
-        #wait (self.DTR_Delay) # should work for linux too
-        #if self.isMacFTDI :
-        #    wait (self.DTR_Delay)
-        # DTR and RTS are supposed to be set simultaneously,
-        # but on M1 mac I found that we need a lag
-        # seems to depend a bit on the MCA, but 10 ms
-        # seems to work for all of them
+        # DTR and RTS are supposed to be set simultaneously. An earlier
+        # version waited 10 ms in between on M1 Macs; since the macOS FTDI
+        # fix no delay is needed (hwcheck/check_baud.py, 0-30 ms tested).
         stat = self.SendCommand (comm)
         self.ResetDTR ()
         if stat :
             print ("SetBaudRate: couldn't send command")
-            # SHOULDN'T IT RESET RTS?
-            return 1 # failure    
+            return 1 # failure (SendCommand leaves RTS low)
         # set baudrate on comm port, clear
         self.serial_connection.baudrate = baudrate
         #self.serial_connection.rts = False # should already be zero
@@ -479,7 +477,7 @@ class MCA8000A :
     def ReceiveStatusCheckSum (self) :
         stat, StatusData = self.ReceiveData (20)
         if stat:
-            return stat, NULL
+            return stat, None
         return stat, int.from_bytes (StatusData[:4], "big")
     
     def UpdateStatusFromData (self, data, hasSerialNumber=False) :
@@ -606,7 +604,7 @@ class MCA8000A :
             print ("ReceiveChannelData: failed getting status")
         # ReceiveStatus updated the checksum, now check it
         if upperdatachecksum != self.LastDataCheckSum :
-            print ("ReceiveChannelData: lower word checksum failed")
+            print ("ReceiveChannelData: upper word checksum failed")
             return 1
         # get the words; purging seems to not work reliably, so just read all
         stat, dummydata = self.ReceiveData (dummy_words_requested*2)
@@ -702,9 +700,9 @@ class MCA8000A :
                 ADCRes_bits = i
                 break
         if roundup : ADCRes_bits -= 1
-        print (ADCRes_bits)
+        if self.debug : print (ADCRes_bits)
         newflags = (0b11111000 & self.flags) + (0b00000111 & ADCRes_bits)
-        print (newflags)
+        if self.debug : print (newflags)
         command = Command_Control (newflags, self.Threshold)         
         stat = self.SendCommand (command)
         if stat :
@@ -803,7 +801,7 @@ class MCA8000A :
         if stat :
             print ("Initialize: error getting status")
             return stat
-        print ("Setting baud rate")
+        if self.debug : print ("Setting baud rate")
         stat = self.SetBaudRate (baudrate=baudrate)
         if stat :
             print ("Initialize: error setting baud rate")

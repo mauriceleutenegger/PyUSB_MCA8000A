@@ -93,7 +93,6 @@ def test_upper_word_checksum_failure(connected, sim):
     assert connected.ReceiveChannelData() == 1
 
 
-@pytest.mark.xfail(reason='I-6: upper-word failure reports "lower word"', strict=True)
 def test_upper_word_checksum_failure_message(connected, sim, capsys):
     set_resolution(sim, connected, 1024)
     sim.faults.corrupt_block = sim.block_transfers + 1
