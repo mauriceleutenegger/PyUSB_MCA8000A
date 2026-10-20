@@ -19,9 +19,6 @@ Python ≥ 3.10, `numpy>=2`, `pyserial`, `pytest`, `pytest-timeout`:
 python3 -m pip install "numpy>=2" pyserial pytest pytest-timeout
 ```
 
-numpy 2 is needed: the tests for the int16 decoding bug (I-3) expect numpy 2's overflow
-error.
-
 ## Tier 1
 
 ```

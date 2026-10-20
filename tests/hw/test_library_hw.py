@@ -14,7 +14,6 @@ import MCA8000A
 from mcasim.host import Host, parse_status
 
 BAUDS = [4800, 9600, 19200, 38400, 57600, 115200]
-I3 = 'I-3: data decoded as int16, overflows on numpy >= 2'
 
 
 def oracle_status(host):
@@ -147,15 +146,12 @@ def spectrum(connected, oracle):
     return st['resolution'], oracle_spectrum(oracle, nwords)
 
 
-@pytest.mark.xfail(reason=I3, strict=True)
 def test_receive_channel_data_raw(connected, spectrum):
     _, expected = spectrum
     assert connected.ReceiveChannelData() == 0
     assert list(connected.RawChannelData) == list(expected)
 
 
-@pytest.mark.xfail(reason=I3 + '; also I-26 if channels 992-1023 have counts at '
-                   'resolution >= 2048', strict=True)
 def test_receive_channel_data_zeroes_only_top_channels(connected, spectrum):
     resolution, expected = spectrum
     expected = expected.copy()

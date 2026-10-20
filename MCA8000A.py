@@ -570,7 +570,10 @@ class MCA8000A :
         if stat :
             print ("ReceiveChannelData: error receiving data")
             return stat
-        lowerdatachecksum = sum (lowerdata) % (2**16) # Amptek's prescription
+        # The docs give the checksum as the byte sum mod 2^16, the DLL compares
+        # the full sum with the full 32-bit field; comparing both mod 2^16
+        # accepts either (issues I-11)
+        lowerdatachecksum = sum (lowerdata) % (2**16)
         # now get the upper words
         comm = Command_SendData (start_channel, words_requested, upper=True)
         stat = self.SendCommand (comm)
@@ -582,7 +585,7 @@ class MCA8000A :
         if stat :
             print ("ReceiveChannelData: failed getting status")
         # ReceiveStatus updated the checksum, now check it
-        if lowerdatachecksum != self.LastDataCheckSum :
+        if lowerdatachecksum != self.LastDataCheckSum % (2**16) :
             print ("ReceiveChannelData: lower word checksum failed")
             return 1
         # now get the upper word data
@@ -604,7 +607,7 @@ class MCA8000A :
         if stat :
             print ("ReceiveChannelData: failed getting status")
         # ReceiveStatus updated the checksum, now check it
-        if upperdatachecksum != self.LastDataCheckSum :
+        if upperdatachecksum != self.LastDataCheckSum % (2**16) :
             print ("ReceiveChannelData: upper word checksum failed")
             return 1
         # get the words; purging seems to not work reliably, so just read all
@@ -615,12 +618,15 @@ class MCA8000A :
         # throw away the dummy data
         #self.PurgeRX () # throw out the remaining byte
 
-        lower = np.frombuffer (lowerdata, dtype=np.int16)
-        upper = np.frombuffer (upperdata, dtype=np.int16)
+        # words are unsigned, low byte first; widen before combining
+        lower = np.frombuffer (lowerdata, dtype='<u2').astype (np.int64)
+        upper = np.frombuffer (upperdata, dtype='<u2').astype (np.int64)
         self.RawChannelData = lower + upper * 2**16
-        # zero out the top 1/32 channels, which are used
-        # for sliding scale linearization
-        MaxChannels = self.RawChannelData.size - self.RawChannelData.size // 32
+        # zero out the top 1/32 channels of the group, which are used
+        # for sliding scale linearization (none of the channels read
+        # here if the resolution is 2048 or more)
+        MaxChannels = min (self.RawChannelData.size,
+                           self.ADCResolution - self.ADCResolution // 32)
         if self.debug :
             print ("MaxChannels = {}".format (MaxChannels))
         self.ChannelData = np.zeros (self.RawChannelData.size, dtype=int)

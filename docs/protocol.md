@@ -421,10 +421,11 @@ reverses the whole buffer into a little-endian C struct, `PmcaStatusType`.)
 
 ⚠ **Conflict: checksum modulus.** [DTP] and [USB §3.7] say the data checksum is the byte sum
 "MOD 2¹⁶". The DLL compares the full 32-bit sum with the full 32-bit field, with no modulus.
-[PY] reduces its own sum mod 2¹⁶ and compares that with the full 32-bit field. A transfer of
-1024 words can have a byte sum up to 522,240, so these give different results once the sum
-exceeds 65,535. [PY] has only been used with low-count spectra so far (byte sums < 500), so
-the question has never come up. ❓ Hardware check: read a spectrum with a large byte sum.
+A transfer of 1024 words can have a byte sum up to 522,240, so these give different results
+once the sum exceeds 65,535. Since 2026-10-19 [PY] compares its sum mod 2¹⁶ with the field
+mod 2¹⁶, which accepts either behaviour (until then it compared its sum mod 2¹⁶ with the full
+field, which would fail if the MCA sends the full sum). [PY] has only been used with low-count
+spectra so far (byte sums < 500), so the question has never come up. ❓ Hardware check: read a spectrum with a large byte sum.
 
 ### Times
 
@@ -504,6 +505,8 @@ DLL comment says the NiCd values "do not match admca", so treat them as approxim
 - **Top 1/32 of each spectrum**: Amptek's example code reads only *R* − *R*/32 channels
   [API-U, VB example]. [PY] zeroes those channels in `ChannelData` (keeping them in
   `RawChannelData`), with the comment that they're used for sliding-scale linearization.
+  (Until 2026-10-19 it zeroed the top 1/32 of the channels *read*, so channels 992–1023 at
+  R ≥ 2048.)
   Observed: the top few channels are **never zero**, even with no input counts, so they
   don't hold ordinary spectrum data. ❓ None of the documents in the reference set say what
   they contain. Some Amptek documentation is believed to explain it, but it hasn't been
@@ -753,7 +756,7 @@ MCAs** (`MonitorThreadProc`: `!isUSBMCA`). [PY] has no keep-alive.
 | Remote power-on + USB detection | Implemented (`PowerOn`) |
 | Baud rate setting | Implemented (`SetBaudRate`, `Initialize`) |
 | Status prompt / parse | Implemented (`PromptForStatus`, `ReceiveStatus*`, `UpdateStatusFromData`). Group number and absolute-peak bit not parsed. |
-| Data readout | Partial (`ReceiveChannelData`): first 1024 channels only, start channel 0 only. Data decoding has known problems (signed 16-bit; fails with numpy ≥ 2). |
+| Data readout | Partial (`ReceiveChannelData`): first 1024 channels only, start channel 0 only. (Until 2026-10-19 the words were decoded as signed 16-bit, which failed with numpy ≥ 2.) |
 | Start / stop acquisition | Implemented |
 | ADC resolution | Implemented (`SetADCResolution`) |
 | Threshold | Implemented (`SetThreshold`) |
