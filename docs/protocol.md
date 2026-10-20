@@ -578,9 +578,9 @@ table in [USB] is wrong.
 🔬 **Observed** (`hwcheck/check_start_channel.py`): the start-channel encoding above is
 correct at every offset tested, and [PY]'s current encoding reads the wrong channels.
 
-**Start channel in [PY]:** `Command_SendData` puts S bits 13–8 in byte 1 and S bits 7–0 in
-byte 2. That disagrees with both [USB] and the DLL; it only gives the right result for S = 0,
-the only value [PY] uses. (Known bug.)
+**Start channel in [PY]:** `Command_SendData` uses this layout since 2026-10-19. Before, it
+put S bits 13–8 in byte 1 and S bits 7–0 in byte 2, which gave the right result only for
+S = 0 (and 16383), the only value [PY] itself uses.
 
 ### Byte order of data
 

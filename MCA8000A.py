@@ -43,9 +43,10 @@ def Command_SendData (start_channel, words_requested,
     # upper command byte is 66 or 0x42 or 1000010
     # lower group command byte is 80 or 0x50 or 1010000
     # upper group command byte is 82 or 0x52 or 1010010
-    byte2 = start_channel % 256
-    byte1 = start_channel // 256
-    byte1 = byte1 << 2
+    # start channel bits 5-0 go in byte 1 bits 7-2, bits 13-6 in byte 2
+    # (USB doc 3.6, DLL; confirmed on hardware, hwcheck/check_start_channel.py)
+    byte1 = (start_channel % 64) << 2
+    byte2 = start_channel // 64
     byte3 = words_arg % 256
     byte1 += words_arg // 256
     command = bytearray ([command_byte, byte1, byte2, byte3])

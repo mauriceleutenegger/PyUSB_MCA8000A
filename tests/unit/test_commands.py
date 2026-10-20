@@ -9,9 +9,6 @@ import pytest
 import MCA8000A as lib
 from mcasim.host import block_command, with_checksum
 
-I1 = pytest.mark.xfail(reason='I-1: start channel mis-encoded', strict=True)
-
-
 def test_add_checksum_appends_sum_mod_256():
     data = bytearray([0x75, 0xFF, 0xFF, 0x01])
     out = lib.addCheckSum(data)
@@ -39,13 +36,10 @@ def test_send_data_word_count(nwords):
     assert lib.Command_SendData(0, nwords) == block_command(0x40, 0, nwords)
 
 
-@pytest.mark.parametrize('start', [
-    pytest.param(1, marks=I1), pytest.param(63, marks=I1), pytest.param(64, marks=I1),
-    pytest.param(256, marks=I1), pytest.param(1000, marks=I1),
-    pytest.param(1024, marks=I1), pytest.param(16000, marks=I1), 0, 16383])
+@pytest.mark.parametrize('start', [0, 1, 63, 64, 256, 1000, 1024, 16000, 16383])
 def test_send_data_start_channel(start):
-    # S bits 5-0 in byte 1 bits 7-2, S bits 13-6 in byte 2 (§9).
-    # 0 and 16383 (all bits set) encode the same under the buggy layout, so they pass.
+    # S bits 5-0 in byte 1 bits 7-2, S bits 13-6 in byte 2 (§9). I-1: the old layout
+    # (S bits 13-8 in byte 1, 7-0 in byte 2) agreed only for 0 and 16383.
     assert lib.Command_SendData(start, 7) == block_command(0x40, start, 7)
 
 
@@ -126,7 +120,7 @@ def test_encoders_understood_by_simulator(host, sim):
     assert sim.memory[:2048].sum() == 0
 
 
-@pytest.mark.parametrize('start', [0, pytest.param(70, marks=I1)])
+@pytest.mark.parametrize('start', [0, 70])
 def test_send_data_reads_the_right_channels(host, sim, start):
     sim.memory[:200] = range(200)
     host.command(bytes(lib.Command_SendData(start, 4)))

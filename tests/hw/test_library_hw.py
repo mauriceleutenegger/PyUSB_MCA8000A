@@ -14,7 +14,6 @@ import MCA8000A
 from mcasim.host import Host, parse_status
 
 BAUDS = [4800, 9600, 19200, 38400, 57600, 115200]
-I1 = 'I-1: Command_SendData puts the start channel bits in the wrong places'
 I3 = 'I-3: data decoded as int16, overflows on numpy >= 2'
 
 
@@ -113,9 +112,8 @@ def test_block_at_start_0_matches_oracle(connected, oracle):
     assert library_block(connected, 0, 64) == oracle_block(oracle, 0x40, 0, 64)
 
 
-@pytest.mark.xfail(reason=I1, strict=True)
 def test_block_at_other_start_matches_oracle(connected, oracle):
-    # The current encoding makes the MCA read from S' = (S >> 8) | (S & 0xFF) << 6.
+    # I-1: the old encoding made the MCA read from S' = (S >> 8) | (S & 0xFF) << 6.
     # Pick an S whose data differs from the data at S'; skip if the spectrum has none.
     n = 16
     for start in range(n, 1024, n):
