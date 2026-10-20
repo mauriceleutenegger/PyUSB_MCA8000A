@@ -638,6 +638,9 @@ class MCA8000A :
         self.ChannelData[0:MaxChannels] = self.RawChannelData[0:MaxChannels]
         return 0
         
+    # The threshold should not exceed half the resolution. Larger values are
+    # left to the MCA, which clamps them to resolution/2 - 1 (observed at
+    # 2048); the status read afterwards shows the value actually set.
     def SetThreshold (self, threshold) :
         # read the MCA's current flags and threshold first (as the DLL
         # does), so that stale cached values aren't written back
@@ -704,7 +707,7 @@ class MCA8000A :
         # self.ADCResolution = 2**(14-ADCRes_bits)
         if not isinstance (channels, int) :
             raise TypeError ('ChannelsNotInt')
-        if channels < 128 :
+        if channels <= 128 : # 256 is the lowest resolution
             raise ValueError ('ChannelsLow')
         if channels > 2**14 :
             raise ValueError ('ChannelsHigh')

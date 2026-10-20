@@ -31,7 +31,6 @@ def test_keeps_other_flag_bits(ready, sim):
     assert sim.flags == 0x08 | 0x02
 
 
-@pytest.mark.xfail(reason='I-7: 128 gives the undefined code 111b', strict=True)
 def test_rejects_128(ready, sim):
     with pytest.raises(ValueError):
         ready.SetADCResolution(128)

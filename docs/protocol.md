@@ -452,7 +452,9 @@ host, only cleared (DELETE). Time is kept per group [API, "Clear time"].
   currently set resolution" [DTP p.3].
   🔬 **Observed** (S/N 1224 at 2048 channels, 2026-10-19): the MCA **clamps** larger values
   to R/2 − 1. CONTROL with 1024 … 16383 is accepted (toggle #2) and the status then reports
-  1023; 0 … 1023 are taken as sent. Not checked at other resolutions.
+  1023; 0 … 1023 are taken as sent. Not checked at other resolutions. [PY] `SetThreshold`
+  leaves the clamping to the MCA (accepts 0 … 16383); its status read afterwards shows the
+  value set.
 - Bit 15: **absolute peak mode** (1) vs. first peak mode (0). This comes from the [DLL]/[API]
   `PmcaControlType` (`threshold:15; absolutePeak:1`). It isn't in [DTP]. The MCA powers up in
   first peak mode, so absolute peak mode must be set again after each power-on [API].
