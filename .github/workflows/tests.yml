@@ -21,5 +21,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: python -m pip install "numpy>=2" pyserial pytest pytest-timeout
+      # installs the package from pyproject.toml, so the build is tested too
+      - run: python -m pip install ".[test]" "numpy>=2"
+      - name: import the installed package from outside the repository
+        working-directory: ${{ runner.temp }}
+        run: python -c "import MCA8000A, serial, numpy; print(MCA8000A.__file__)"
       - run: python -m pytest

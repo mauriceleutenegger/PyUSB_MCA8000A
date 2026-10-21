@@ -1,4 +1,32 @@
-# Test configuration only, for now. Packaging metadata is improvement M-11.
+# Packaging: the library is the single module MCA8000A.py at the repository root.
+#   pip install .               # the library
+#   pip install -e ".[test]"    # editable, with the test tools
+# Tests also run from a checkout without installing (pythonpath below).
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mca8000a"
+version = "0.1.0"
+description = "Control an Amptek MCA8000A (USB serial variant) from Python"
+readme = "README.md"
+license = "LGPL-2.1-only"
+license-files = ["LICENSE"]
+authors = [{name = "Maurice Leutenegger"}]
+requires-python = ">=3.10"
+dependencies = [
+    "pyserial>=3.0",
+    "numpy",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-timeout"]
+
+[tool.setuptools]
+py-modules = ["MCA8000A"]
+
 
 [tool.pytest.ini_options]
 minversion = "8.0"

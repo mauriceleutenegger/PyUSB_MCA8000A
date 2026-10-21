@@ -13,11 +13,16 @@ facts the tests rely on are in `docs/protocol.md`.
 
 ## Requirements
 
-Python ≥ 3.10, `numpy>=2`, `pyserial`, `pytest`, `pytest-timeout`:
+Python ≥ 3.10, `numpy`, `pyserial`, `pytest`, `pytest-timeout`. From the repository root,
+install the library (editable) with the test tools:
 
 ```
-python3 -m pip install "numpy>=2" pyserial pytest pytest-timeout
+python3 -m pip install -e ".[test]"
 ```
+
+The tests also run from a checkout without installing the library, as long as the
+dependencies are installed (`pyproject.toml` puts the root on pytest's path). CI tests
+with numpy 2.
 
 ## Tier 1
 
