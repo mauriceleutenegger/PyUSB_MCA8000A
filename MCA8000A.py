@@ -238,6 +238,17 @@ class MCA8000A :
         # close port? doesn't seem necessary
         return
 
+    # close the port (also one passed in); nothing is sent to the MCA.
+    # Safe to call twice.
+    def close (self) :
+        self.serial_connection.close ()
+
+    def __enter__ (self) :
+        return self
+
+    def __exit__ (self, exc_type, exc_value, traceback) :
+        self.close ()
+
     def WaitForCTSFlip (self, delay=0.2) :
         timeout = timeit.default_timer () + delay
         while (True) :
