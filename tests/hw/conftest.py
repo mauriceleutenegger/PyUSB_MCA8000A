@@ -153,7 +153,7 @@ def scratch(request, hw_info, connected, oracle):
     stops."""
     s = state.Scratch.enter(oracle)
     yield s
-    connected.serial_connection.close()
+    connected.close()
     time.sleep(0.1)
     port = open_port(hw_info['path'])
     try:

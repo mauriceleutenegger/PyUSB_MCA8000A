@@ -69,7 +69,7 @@ def main():
                 code, start, n, status['datachk'], prev))
         out['transfers'].append(entry)
         prev = sum(data)
-    mca.serial_connection.close()
+    mca.close()
     path = os.path.join(HERE, 'capture-{}.json'.format(out['serial']))
     with open(path, 'w') as f:
         json.dump(out, f, indent=1)

@@ -282,7 +282,7 @@ def main():
             for baud in bauds:
                 mca.serial_connection.baudrate = baud
                 run_bulk(mca, rep)
-            mca.serial_connection.close()
+            mca.close()
         else:
             for baud in bauds:
                 args.baud = baud
@@ -291,7 +291,7 @@ def main():
                 run_handshake(mca, rep, args.trials, args.modes.split(','))
                 run_rx_purge(mca, rep, min(args.trials, 10))
                 mca.ResetRTS()
-                mca.serial_connection.close()
+                mca.close()
                 args.power_on = False
     except HWError as e:
         rep.result('setup', 'FAIL', str(e))

@@ -74,7 +74,7 @@ def main():
         rep.result('c) after port reopen, status at 4800', 'INFO', 'received' if st_c else 'none')
         # d) power on + connect
         args.power_on = True
-        mca.serial_connection.close()
+        mca.close()
         try:
             mca2, st_d = connect(args)
             rep.result('d) PowerOn + connect recovers', 'PASS',
