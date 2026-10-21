@@ -1,6 +1,6 @@
 """Lock guard for the hardware tests (tier 2): never send SET LOCK (75h).
 
-There is no known way to undo a lock (issues I-21), so every port the hardware tests open
+There is no known way to undo a lock, so every port the hardware tests open
 is a GuardedSerial. Its `write` ends the whole pytest session, before anything goes out,
 if the data starts with the SET LOCK command byte. The library writes each 5-byte command
 in one call, so the first byte is the command byte.

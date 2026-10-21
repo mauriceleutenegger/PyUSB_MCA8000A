@@ -1,15 +1,15 @@
 """Tier-2 fixtures: a guarded port on the real MCA, the library on it, and the oracle.
 
 Every port is a GuardedSerial (tests/lockguard.py): SET LOCK can't be sent. Each test gets
-a freshly opened port (which puts the MCA back to 4800 baud, I-25) and closes it at the
+a freshly opened port (which puts the MCA back to 4800 baud) and closes it at the
 end, even after a failure. The checks use the hand-driven Host (mcasim/host.py) as an
 oracle independent of MCA8000A.py.
 
 At the end of every session, the settings and the times of the current group must be as
 they were at the start. A state session (--hw-state/-delete/-any-memory) also reads all 32768
 channels at its start and end (saved in hwcheck/results/) and requires them unchanged
-outside the scratch group, except the parameter channels of the groups it visits (I-27,
-tests/state.py); state tests work in the scratch group and restore the settings after
+outside the scratch group, except the parameter channels of the groups it visits
+(tests/state.py); state tests work in the scratch group and restore the settings after
 each test.
 """
 
@@ -128,13 +128,13 @@ def port(request, hw_info):
 
 @pytest.fixture
 def mca(port):
-    """The library on the guarded port (M-1), not yet connected (4800)."""
+    """The library on the guarded port, not yet connected (4800)."""
     return MCA8000A.MCA8000A(None, serial_connection=port)
 
 
 @pytest.fixture
 def connected(mca):
-    """The library connected at 115200 (D6)."""
+    """The library connected at 115200, the rate users run at."""
     assert mca.Initialize(baudrate=115200) == 0
     return mca
 

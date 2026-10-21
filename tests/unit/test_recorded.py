@@ -39,7 +39,7 @@ def test_first_data_status_after_prompts_reports_zero():
 
 
 def test_top_channels_hold_group_parameters():
-    # I-19 table in docs/protocol.md §9 (unchanged since 2026-10-13)
+    # table of the top channels in docs/protocol.md §9 (unchanged since 2026-10-13)
     counts = captured_counts(CAP)
     assert [int(c) for c in counts[2042:]] == [
         0x20022420, 0x05001625, 0x004003B1, 0x0906, 0x0A4B, 0x0A00]

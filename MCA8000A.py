@@ -508,7 +508,7 @@ class MCA8000A :
             return stat
         # The docs give the checksum as the byte sum mod 2^16, the DLL compares
         # the full sum with the full 32-bit field; comparing both mod 2^16
-        # accepts either (issues I-11)
+        # accepts either (which one the MCA uses is unconfirmed)
         lowerdatachecksum = sum (lowerdata) % (2**16)
         # now get the upper words
         comm = Command_SendData (start_channel, words_requested, upper=True)

@@ -25,7 +25,7 @@ def first_status_after_open(host):
 
 
 def accepted_command_toggles_twice(host):
-    """§6, I-12: a valid command gets CTS toggle #2, then status + data."""
+    """§6: a valid command gets CTS toggle #2, then status + data."""
     assert host.command(block_command(0x40, 0, 1)) == (True, True)
     raw = host.collect()
     assert len(raw) == STATUS_SIZE + 2
@@ -33,7 +33,7 @@ def accepted_command_toggles_twice(host):
 
 
 def rejected_command_acts_as_prompt(host):
-    """§6, I-12: a wrong checksum gets no toggle #2, and only a status comes back."""
+    """§6: a wrong checksum gets no toggle #2, and only a status comes back."""
     cmd = bytearray(block_command(0x40, 0, 1))
     cmd[4] -= 1
     assert host.command(bytes(cmd)) == (True, False)
@@ -47,7 +47,7 @@ def short_command_rejected(host):
 
 
 def checksum_above_sum_accepted(host):
-    """§6, I-23: the firmware accepts a checksum byte >= the true sum (mod 256)."""
+    """§6: the firmware accepts a checksum byte >= the true sum (mod 256)."""
     cmd = bytearray(block_command(0x40, 0, 1))
     cmd[4] += 1
     assert host.command(bytes(cmd)) == (True, True)
@@ -65,7 +65,7 @@ def data_checksum_in_next_status(host):
     """§8: a 40h status carries the byte sum of the previous transfer's data."""
     _, data = host.read_block(0x40, 0, 256)
     st, _ = host.read_block(0x40, 0, 1)
-    assert st['field'] == sum(data)          # < 2^16 here; mod 2^16 vs 32 bit is I-11
+    assert st['field'] == sum(data)          # < 2^16 here; mod 2^16 vs 32 bit is still open
 
 
 def prompt_clears_data_checksum(host):
@@ -77,7 +77,7 @@ def prompt_clears_data_checksum(host):
 
 
 def reopen_resets_to_4800(host):
-    """§5, I-25: after a switch to 115200, reopening the port puts the MCA back to 4800."""
+    """§5: after a switch to 115200, reopening the port puts the MCA back to 4800."""
     host.connect(115200)
     valid_status(host.status())
     host.port.close()

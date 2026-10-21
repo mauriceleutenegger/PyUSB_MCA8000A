@@ -1,7 +1,7 @@
 """FakeSerial: the part of pyserial's Serial that MCA8000A.py uses, wired to a SimMCA.
 
 Host-side behaviour mimics pyserial on macOS with an FT232R (`timing.md`):
-- opening the port raises DTR and RTS, at least briefly (I-25);
+- opening the port raises DTR and RTS, at least briefly (this resets the MCA to 4800 baud);
 - `out_waiting` always reads 0 and `flush()` returns at once;
 - `reset_input_buffer()` also discards output not yet sent (SimMCA.purge_drops_unsent).
 """
@@ -162,8 +162,8 @@ class FakeSerial:
 def serial_module(sim):
     """A stand-in for the `serial` module whose Serial() opens a FakeSerial on `sim`.
 
-    Use with monkeypatch.setattr(MCA8000A, 'serial', serial_module(sim)) until M-1
-    lets tests pass the port in directly.
+    Use with monkeypatch.setattr(MCA8000A, 'serial', serial_module(sim)) to test
+    the library opening the port itself.
     """
     return types.SimpleNamespace(
         Serial=lambda *args, **kwargs: FakeSerial(sim, *args, **kwargs),

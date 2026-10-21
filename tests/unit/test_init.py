@@ -1,4 +1,4 @@
-"""MCA8000A.__init__: opening the port itself, or using one passed in (M-1)."""
+"""MCA8000A.__init__: opening the port itself, or using one passed in."""
 
 import types
 

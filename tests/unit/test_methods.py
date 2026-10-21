@@ -1,8 +1,8 @@
-"""The ten command methods that send one command and then read a status (M-5).
+"""The ten command methods that send one command and then read a status.
 
 Pins down their common behaviour on the simulator: return codes, the command sent, the
 wait before the status read, the error message on each failure path, and (for the four
-CONTROL methods) the fresh status read before the command (I-14).
+CONTROL methods) the fresh status read before the command.
 """
 
 import pytest
@@ -107,6 +107,6 @@ def test_control_fails_on_fresh_status(connected, sim, clock, capsys, call, code
 @pytest.mark.parametrize('call, code, delay, control, prefix',
                          [c for c in CASES if c.values[1] == 0x05])
 def test_delete_waits_for_busy_mca(connected, sim, call, code, delay, control, prefix):
-    # I-18: up to 2 s busy after DELETE (DTP); one prompt after 0.2 s isn't enough
+    # up to 2 s busy after DELETE (DTP); one prompt after 0.2 s isn't enough
     sim.delete_busy = lambda R: 2.0
     assert call(connected) == 0

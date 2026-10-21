@@ -2,7 +2,7 @@
 
 Sends only status prompts, block data requests (40h/42h/50h) and the baud command.
 Saves the raw bytes, with provenance, to tests/data/capture-<serial>.json. Unit tests use
-them as real responses for parsing and decoding (plan D4).
+them as real responses for parsing and decoding.
 
     python3 tests/data/capture.py [--port /dev/cu.usbserial-XXX] [--power-on]
 

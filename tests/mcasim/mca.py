@@ -11,19 +11,19 @@ Every port operation first brings the simulator up to the clock's current time
 
 Model in brief:
 - Control lines (§3, §6, §7). RTS rising: the MCA toggles CTS (toggle #1) and listens for
-  a 5-byte command. A valid command: CTS toggles again (#2, "accepted", I-12) and the
+  a 5-byte command. A valid command: CTS toggles again (#2, "accepted") and the
   command runs. RTS falling: the MCA sends the command's response (data commands), or
   nothing (other accepted commands), or a 20-byte status (no command, or a rejected one,
   i.e. a status prompt). The answer starts `response_latency` after RTS falls and is
   dropped if RTS is high again by then (assumed; fits 🔬 2026-10-19: the library's prompt,
   RTS low for 0.2 ms then high, right after opening the port gets exactly one status).
-- Checksum test is lenient by default: accepted if checksum byte >= true sum (I-23).
+- Checksum test is lenient by default: accepted if checksum byte >= true sum.
 - Baud rate (§5): DTR + RTS both high resets the MCA to 4800 (assumed mechanism; it
-  explains both observations of I-25: port open resets to 4800, and a baud command sent
+  explains both hardware observations: port open resets to 4800, and a baud command sent
   at another rate fails). Command 00h with DTR high sets the rate and starts the
-  old-protocol data stream when RTS falls (I-24). RTS rising stops the stream; the
+  old-protocol data stream when RTS falls. RTS rising stops the stream; the
   stream's last bytes are held and sent ahead of the next response. At 115200 the MCA then
-  answers no plain prompt until it has received a byte in SEND mode (I-24).
+  answers no plain prompt until it has received a byte in SEND mode.
 - Bytes sent at a rate the receiver isn't using arrive as 0xFF (framing garbage, count
   kept; assumed). Status checksums then fail.
 - macOS driver bug (`timing.md`): purging the host RX buffer also discards host output
@@ -35,7 +35,7 @@ Model in brief:
   commands address the current group and run on into the following groups.
 - Acquisition: real/live time advance with the clock; preset stops acquisition (§10).
   Counts are not simulated; tests write `memory` directly.
-- Power: automatic power-down after `idle_powerdown` s on battery (§13, I-20), power-on by
+- Power: automatic power-down after `idle_powerdown` s on battery (§13), power-on by
   a DTR square wave with RTS high (§4).
 """
 
@@ -122,20 +122,20 @@ class SimMCA:
         self.line_latency = 0.0005      # host line change -> seen by the MCA
         self.usb_latency = 0.001        # host write -> first bit on the wire; MCA byte -> host
         self.cts_latency = 0.001        # RTS seen -> CTS toggle #1 seen by the host
-        self.accept_latency = 0.002     # last command byte -> toggle #2 (1-3 ms, I-12)
+        self.accept_latency = 0.002     # last command byte -> toggle #2 (1-3 ms)
         self.response_latency = 0.0005  # RTS low -> MCA starts sending (cancelled if RTS rises)
         self.open_duration = 0.02       # time a real port open takes (assumed)
         self.checksum_rule = 'lenient'  # or 'strict'
-        self.data_checksum_modulus = 2**32   # I-11 open: 2**32 (DLL) or 2**16 (docs)
+        self.data_checksum_modulus = 2**32   # unconfirmed: 2**32 (DLL) or 2**16 (docs)
         self.purge_drops_unsent = True  # macOS driver bug
         self.stream_tail_bytes = 16     # stream bytes held back when RTS stops a stream
-        self.mute_after_stream_baud = 115200  # I-24: rates at which a stopped stream mutes
+        self.mute_after_stream_baud = 115200  # rates at which a stopped stream mutes
         self.live_fraction = 1.0        # live time / real time while acquiring
         self.delete_busy = lambda R: R / 8000 + 0.05   # assumed; DLL waits R/8 ms + 256 ms
         self.start_delay = 0.97         # START -> counting; no answers meanwhile (S/N 1224)
         self.lock_zero_busy = 0.0       # assumed
         self.idle_powerdown = None      # s idle on battery before power-down (~180 real)
-        self.floating_cts_after_powerdown = True   # I-20: one CTS change seen after power-down
+        self.floating_cts_after_powerdown = True   # one CTS change seen after power-down
         self.power_on_edges = 100       # DTR edges with RTS high that switch it on (assumed)
         self.power_on_delay = 1.0       # burst -> CTS toggle at power-up (assumed)
 
@@ -167,8 +167,8 @@ class SimMCA:
         self.cmd = bytearray()
         self.cmd_state = 'none'         # none / accepted / rejected
         self.response = None            # callable building the response at RTS fall
-        self.held = b''                 # stream tail held back (I-24)
-        self.muted = False              # I-24 quirk at 115200
+        self.held = b''                 # stream tail held back
+        self.muted = False              # stream quirk at 115200
         self.busy_until = 0.0
         self.count_from = 0.0           # acquisition time counts from here
         self.last_comm = 0.0
@@ -333,7 +333,7 @@ class SimMCA:
                 self._on_rts_rise()
             else:
                 self._on_rts_fall()
-        # DTR + RTS high: baud-setting mode, which resets the rate (I-25)
+        # DTR + RTS high: baud-setting mode, which resets the rate
         if self.powered and self.rts and self.dtr:
             self._baud_mode()
 
@@ -425,7 +425,7 @@ class SimMCA:
             self.muted = False
             self.log.append((self.t, 'muted', False))
         if len(self.cmd) >= 5:
-            return                  # extra bytes after a command are ignored (I-12)
+            return                  # extra bytes after a command are ignored
         self.cmd.append(b)
         if len(self.cmd) == 5:
             self._evaluate(bytes(self.cmd))
@@ -491,7 +491,7 @@ class SimMCA:
     def _control(self, flags, threshold_word):
         was = self.acquiring
         self.flags = (self.flags & ~HOST_FLAGS & 0xFF) | (flags & HOST_FLAGS)
-        # clamped to R/2 - 1 (seen at 2048 only, I-8; assumed for other R)
+        # clamped to R/2 - 1 (seen at 2048 only; assumed for other R)
         limit = self.resolution // 2 - 1
         self.threshold_word = (threshold_word & 0x8000) | min(threshold_word & 0x7FFF, limit)
         if self.acquiring and not was:
@@ -510,7 +510,7 @@ class SimMCA:
         self.busy_until = self.t + self.delete_busy(R)
 
     def _lock(self, n):
-        # Simulated only; the real behaviour of lock 0 is unconfirmed (I-21).
+        # Simulated only; the real behaviour of lock 0 is unconfirmed.
         if n:
             self.lock_code = n
             self.flags |= FLAG_PROTECTED

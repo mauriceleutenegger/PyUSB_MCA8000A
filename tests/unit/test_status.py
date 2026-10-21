@@ -41,7 +41,7 @@ def test_recorded_status(mca, rec):
     got = parsed(mca)
     for key, value in rec['expected'].items():
         if key == 'group':
-            continue                    # not parsed (M-3)
+            continue                    # not parsed yet
         assert got[key] == pytest.approx(value), key
 
 

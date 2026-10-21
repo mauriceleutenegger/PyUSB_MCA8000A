@@ -1,4 +1,4 @@
-"""I-21 steps 1-2: try to unlock an ALREADY-LOCKED MCA with lock number 0.
+"""Try to unlock an ALREADY-LOCKED MCA with lock number 0.
 
 DANGER: sends SET LOCK (75h). Believed (unconfirmed) to wipe the MCA's data.
 Only for the unit that is already locked. Refuses to run unless:

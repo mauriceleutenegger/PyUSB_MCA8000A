@@ -1,6 +1,6 @@
 """ReceiveChannelData against the simulator. docs/protocol.md §8 (checksum), §9.
 
-The library reads min(resolution, 1024) channels from start channel 0 (M-2 would read
+The library reads min(resolution, 1024) channels from start channel 0 (not yet
 the full spectrum), and sets ChannelData to RawChannelData with the top 1/32 of the
 group zeroed.
 """
@@ -29,7 +29,7 @@ def check_readout(mca, counts, zero_from):
 def test_readout_small_resolutions(connected, sim, channels):
     set_resolution(sim, connected, channels)
     rng = np.random.default_rng(channels)
-    # byte sums stay < 2^16 so that I-11 doesn't come into it
+    # byte sums stay < 2^16 so that the checksum modulus doesn't come into it
     sim.memory[:channels] = rng.integers(0, 60, channels)
     check_readout(connected, sim.memory[:channels], channels - channels // 32)
 
@@ -42,11 +42,11 @@ def test_readout_large_counts(connected, sim):
 
 
 def test_readout_recorded_spectrum_at_2048(connected, sim):
-    # (channels 992-1023 are empty in this spectrum, so I-26 doesn't show here)
+    # (channels 992-1023 are empty in this spectrum, so wrongly zeroing them wouldn't show)
     cap = load_capture(1224)
     configure_sim(sim, cap)
     assert connected.ReceiveStatusFromPrompt() == 0
-    # only the first 1024 channels are read (M-2); none is in the top 1/32 of the group
+    # only the first 1024 channels are read; none is in the top 1/32 of the group
     check_readout(connected, captured_counts(cap)[:1024], 1024)
 
 
@@ -58,7 +58,7 @@ def test_readout_does_not_zero_ordinary_channels_at_2048(connected, sim):
 
 @pytest.mark.parametrize('modulus', [2**16, 2**32])
 def test_readout_high_byte_sums(connected, sim, modulus):
-    # I-11 is open: the MCA may report the checksum mod 2^16 (docs) or 32-bit (DLL).
+    # Unconfirmed: the MCA may report the checksum mod 2^16 (docs) or 32-bit (DLL).
     # The library should accept the correct value either way.
     sim.data_checksum_modulus = modulus
     set_resolution(sim, connected, 1024)

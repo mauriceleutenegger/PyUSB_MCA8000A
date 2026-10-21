@@ -1,4 +1,4 @@
-"""Preset time semantics (protocol.md §16 Q9) and the stale-flags issue (I-14).
+"""Preset time semantics (protocol.md §16 Q9) and the library's stale cached flags.
 
 CHANGES MCA STATE. Requires --yes. Works in a scratch memory group (default: the
 highest group at the current resolution) whose time it clears; the original group
@@ -7,7 +7,7 @@ but acquisition runs in it for a few seconds (with no detector input, no counts)
 
   1. preset 0, start, wait --run s: still acquiring? (expect yes: "run until stopped")
   2. preset 3 s, clear time, start, wait 3 s + margin: stopped by itself, real ~3 s?
-     Also reports whether the library's cached flags still say "acquiring" (I-14).
+     Also reports whether the library's cached flags still say "acquiring".
 
 Commands are built here with fresh read-modify-write of the flags, not with the
 library's cached flags.
@@ -90,7 +90,7 @@ def main():
         rep.result('preset 3 s ({} timer): stopped by itself'.format(timer),
                    'PASS' if not st['acquiring'] else 'FAIL',
                    'real={:.2f} live={:.2f}'.format(st['real'], st['live']))
-        rep.result('I-14: library cached flags said acquiring after the preset stop', 'INFO',
+        rep.result('library cached flags said acquiring after the preset stop', 'INFO',
                    'cached acquiring={} actual={}'.format(cached, st['acquiring']))
     except HWError as e:
         rep.result('error', 'FAIL', str(e))

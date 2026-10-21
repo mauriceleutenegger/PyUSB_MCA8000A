@@ -32,7 +32,7 @@ def pytest_addoption(parser):
                      'and time (implies --hw-state)')
     g.addoption('--hw-any-memory', action='store_true',
                 help='also run tests that may overwrite memory outside the scratch group, '
-                     'e.g. the parameter channels of other groups (I-27). Only on an MCA '
+                     'e.g. the parameter channels of other groups. Only on an MCA '
                      'with nothing to keep. Implies --hw-state')
     g.addoption('--hw-slow', action='store_true',
                 help='also run slow tests (minutes; e.g. power-down on battery)')

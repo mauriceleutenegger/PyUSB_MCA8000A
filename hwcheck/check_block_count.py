@@ -1,4 +1,4 @@
-"""I-2: where do the words-requested bits go in block data commands (40h)?
+"""Where do the words-requested bits go in block data commands (40h)?
 
 Sends Send Data Lower Word (40h) from start channel 0 for several word counts N,
 encoded with the DLL layout and the USB-doc bit-table layout, and counts how many
@@ -54,11 +54,11 @@ def main():
                     rep.result('status checksum', 'FAIL', 'bad status checksum')
         rep.info('votes', votes)
         if votes['dll'] and not votes['doc']:
-            rep.result('I-2: MCA decodes the count with the DLL layout', 'PASS', str(votes))
+            rep.result('MCA decodes the count with the DLL layout', 'PASS', str(votes))
         elif votes['doc'] and not votes['dll']:
-            rep.result('I-2: MCA decodes the count with the USB-doc bit-table layout', 'PASS', str(votes))
+            rep.result('MCA decodes the count with the USB-doc bit-table layout', 'PASS', str(votes))
         else:
-            rep.result('I-2: count layout', 'INCONCLUSIVE', str(votes))
+            rep.result('count layout', 'INCONCLUSIVE', str(votes))
     except HWError as e:
         rep.result('error', 'FAIL', str(e))
     rep.save()

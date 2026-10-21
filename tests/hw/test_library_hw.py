@@ -31,15 +31,15 @@ def test_initialize(mca, port, hw_info, baud):
     assert mca.Initialize(baudrate=baud) == 0
     assert port.baudrate == baud
     time.sleep(0.5)
-    assert port.in_waiting == 0                       # no stream leftovers (I-24)
-    st = oracle_status(Host.on_port(port))            # I-22: don't trust the return value
+    assert port.in_waiting == 0                       # no stream leftovers
+    st = oracle_status(Host.on_port(port))            # don't trust the return value
     assert st['serial'] == hw_info['serial']
 
 
 # ---------------------------------------------------------------- status
 
 def test_status_matches_oracle(connected, oracle):
-    # library first: its prompt fails after someone else's prompt (I-15, below)
+    # library first: its prompt failed after someone else's prompt (below)
     assert connected.ReceiveStatusFromPrompt() == 0
     st = oracle_status(oracle)
     m = connected
@@ -49,7 +49,7 @@ def test_status_matches_oracle(connected, oracle):
     assert m.ADCResolution == st['resolution']
     assert m.isRunning == st['acquiring']
     assert m.isProtected == st['protected']
-    assert m.Threshold & 0x7FFF == st['threshold']    # bit 15: I-13 (tier 1)
+    assert m.Threshold & 0x7FFF == st['threshold']    # bit 15: absolute peak (tier 1)
     assert abs(m.BatteryStatus - st['battery']) <= 2
     tol = 1.0 if st['acquiring'] else 0.0
     assert m.RealTime == pytest.approx(st['real'], abs=tol)
@@ -58,7 +58,7 @@ def test_status_matches_oracle(connected, oracle):
 
 
 def test_prompt_after_another_prompt(connected, oracle):
-    # I-15: one prompt not made by the library toggles CTS once. The MCA toggles CTS
+    # One prompt not made by the library toggles CTS once. The MCA toggles CTS
     # again within a fraction of a ms of RTS rising, back to the level the library
     # remembered, so before the fix the library saw no change and timed out
     # (2026-10-19, 3/3).
@@ -69,7 +69,7 @@ def test_prompt_after_another_prompt(connected, oracle):
 @pytest.mark.parametrize('baud', [4800, 57600, 115200])
 def test_many_commands_and_prompts(mca, port, baud):
     """Timing margin: 100 rounds of prompt + 1-word data request without a failure.
-    The macOS purge race (timing.md) depends on the rate (D6)."""
+    The macOS purge race (timing.md) depends on the rate."""
     assert mca.Initialize(baudrate=baud) == 0
     failures = []
     for i in range(100):
@@ -112,7 +112,7 @@ def test_block_at_start_0_matches_oracle(connected, oracle):
 
 
 def test_block_at_other_start_matches_oracle(connected, oracle):
-    # I-1: the old encoding made the MCA read from S' = (S >> 8) | (S & 0xFF) << 6.
+    # The old encoding made the MCA read from S' = (S >> 8) | (S & 0xFF) << 6.
     # Pick an S whose data differs from the data at S'; skip if the spectrum has none.
     n = 16
     for start in range(n, 1024, n):
@@ -131,7 +131,7 @@ def oracle_spectrum(host, nwords):
     lower = oracle_block(host, 0x40, 0, nwords)
     upper = oracle_block(host, 0x42, 0, nwords)
     if sum(lower) >= 2**16 or sum(upper) >= 2**16:
-        pytest.skip('byte sum >= 2^16: the checksum question I-11 is open')
+        pytest.skip('byte sum >= 2^16: the checksum modulus is unconfirmed')
     lo = np.frombuffer(lower, dtype='<u2').astype(np.int64)
     hi = np.frombuffer(upper, dtype='<u2').astype(np.int64)
     return lo + (hi << 16)
@@ -142,7 +142,7 @@ def spectrum(connected, oracle):
     st = oracle_status(oracle)
     if st['acquiring']:
         pytest.skip('MCA is acquiring; the spectrum would change between reads')
-    nwords = min(st['resolution'], 1024)              # what the library reads (M-2)
+    nwords = min(st['resolution'], 1024)              # what the library reads
     return st['resolution'], oracle_spectrum(oracle, nwords)
 
 

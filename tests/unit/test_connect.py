@@ -15,7 +15,7 @@ def test_initialize(mca, sim, baud):
 
 @pytest.mark.parametrize('baud', [57600, 115200])
 def test_no_stream_leftovers_after_initialize(mca, sim, clock, baud):
-    # I-24: leftover stream bytes must not end up in front of the next transfer
+    # leftover stream bytes must not end up in front of the next transfer
     mca.Initialize(baudrate=baud)
     clock.sleep(1.0)
     assert mca.serial_connection.in_waiting == 0
@@ -50,7 +50,7 @@ def test_initialize_fails_when_status_never_valid(mca, sim):
 
 
 def test_second_initialize_fails_at_high_rate(mca, sim):
-    # I-25 (characterized): a baud change only works when sent at 4800
+    # a baud change only works when sent at 4800
     assert mca.Initialize(baudrate=57600) == 0
     assert mca.SetBaudRate(57600) == 1
     assert sim.baud == 4800
@@ -70,7 +70,7 @@ def test_power_on_from_powered_down(sim, clock):
     assert sim.powered
     assert mca.is_USB_MCA is True
     assert mca.Initialize(baudrate=115200) == 0
-    assert mca.RealTime == pytest.approx(42.0)          # state survives (I-20)
+    assert mca.RealTime == pytest.approx(42.0)          # state survives
 
 
 def test_power_on_burst_shape(mca, sim, clock):

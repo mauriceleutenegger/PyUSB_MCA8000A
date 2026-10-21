@@ -8,8 +8,7 @@ Two tiers, both run with pytest from the repository root:
 - **Tier 2 (hardware)**, `tests/hw/`: the library against a real MCA8000A (USB serial
   variant). Skipped unless enabled with `--hw`. Read-only unless further flags are given.
 
-`I-n` in test names and xfail reasons refers to the maintainer's issue list; the protocol
-facts the tests rely on are in `docs/protocol.md`.
+The protocol facts the tests rely on are in `docs/protocol.md`.
 
 ## Requirements
 
@@ -67,7 +66,7 @@ space and a full path, pytest takes `/dev` as its root directory and fails.
 |---|---|---|
 | `--hw` | Read-only tests: contract scenarios, `Initialize` at each baud rate, status and data against the oracle, 100-round robustness at 4800/57600/115200 | ~2 min |
 | `--hw-state` | Threshold and preset set and read back, in the scratch group; settings restored | +1–2 min |
-| `--hw-delete` | (implies `--hw-state`) start/stop, preset stop, stale flags (I-14), DELETE data/time/both, all in the scratch group | +3 min |
+| `--hw-delete` | (implies `--hw-state`) start/stop, preset stop, stale cached flags, DELETE data/time/both, all in the scratch group | +3 min |
 | `--hw-any-memory` | (implies `--hw-state`) resolution changes; they write into other groups' parameter channels (below). **Only on an MCA with nothing to keep.** | +1 min |
 | `--hw-slow` | Power-down after 6 min idle and recovery. MCA on battery (skips otherwise); don't touch it meanwhile | ~7 min |
 | `--mca-serial N` | Abort unless the MCA with S/N N answers | |

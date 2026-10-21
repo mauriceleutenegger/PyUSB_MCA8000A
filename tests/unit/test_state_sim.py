@@ -66,7 +66,7 @@ def test_restore_after_a_test_left_a_mess(oracle, sim):
 @pytest.mark.parametrize('why, change', [
     ('acquiring', lambda s: (setattr(s, 'preset', 0), setattr(s, 'flags', 0x13))),
     ('protected', lambda s: setattr(s, 'flags', 0x23)),
-    ('I-13', lambda s: setattr(s, 'threshold_word', 0x8000 | 64)),
+    ('absolute-peak mode', lambda s: setattr(s, 'threshold_word', 0x8000 | 64)),
     ('scratch group', lambda s: setattr(s, 'group', 15)),
 ])
 def test_scratch_refuses(oracle, sim, why, change):

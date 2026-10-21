@@ -1,4 +1,4 @@
-"""I-12: what does the second CTS toggle after a command mean?
+"""What does the second CTS toggle after a command mean?
 
 Hand-drives the SEND handshake (RTS high, wait for CTS toggle #1, write 5 bytes,
 wait for CTS toggle #2, RTS low) and records the toggle timings and how many bytes
@@ -83,7 +83,7 @@ def main():
                            'INFO', 'accepted={} expected={} {}'.format(accepted, expect, r))
                 if prompt_status_retry(mca) is None:  # resynchronize
                     raise HWError('lost the MCA after "{}"'.format(label))
-        rep.result('I-12: toggle #2 happens exactly when the command is accepted',
+        rep.result('toggle #2 happens exactly when the command is accepted',
                    'PASS' if consistent_ack else 'FAIL')
         rep.result('checksum rule: accepted iff checksum byte >= sum mod 256',
                    'PASS' if consistent_rule else 'FAIL')

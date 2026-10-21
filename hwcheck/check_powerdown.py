@@ -1,4 +1,4 @@
-"""I-20: what happens when the MCA powers itself down, and does it recover?
+"""What happens when the MCA powers itself down, and does it recover?
 
 Battery operation only. Connects, then leaves the MCA completely idle for --idle
 seconds (default 300; the DTP says it powers down after ~3 minutes). Then:
@@ -65,7 +65,7 @@ def main():
         rep.result('b) ReceiveStatusFromPrompt', 'INFO', '{} cached status changed={}'.format(r, before != after))
         if powered_down and r.get('return') == 0:
             rep.result('ReceiveStatusFromPrompt reports success with a powered-down MCA', 'FAIL',
-                       'false success (see issues I-22)')
+                       'false success')
         r = timed(lambda: mca.SendCommand(block_command(0x40, 0, 1)))
         rep.result('b) SendCommand', 'INFO', str(r))
         # c) reopen at 4800

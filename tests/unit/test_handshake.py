@@ -59,7 +59,7 @@ def test_send_command_to_powered_down_mca(connected, sim, clock):
     sim.power_down_now()
     t0 = clock.now
     assert connected.SendCommand(PRESET_5) == 1
-    assert 1.5 < clock.now - t0 < 3            # 10 x 0.2 s; 2.1 s observed (I-20)
+    assert 1.5 < clock.now - t0 < 3            # 10 x 0.2 s; 2.1 s observed
 
 
 def test_rts_low_between_retries(connected, sim, clock):
@@ -77,7 +77,7 @@ def test_rts_low_between_retries(connected, sim, clock):
 def test_prompt_for_status(connected, sim):
     assert connected.PromptForStatus() == 0
     sim.power_down_now()
-    connected.PromptForStatus()                     # the floating CTS change (I-20)
+    connected.PromptForStatus()                     # floating CTS change after power-down
     assert connected.PromptForStatus() == 1
 
 

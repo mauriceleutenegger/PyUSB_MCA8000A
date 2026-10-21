@@ -62,7 +62,7 @@ def test_stop_keeps_settings_changed_elsewhere(connected, sim):
 
 def test_stop_with_absolute_peak_mode(connected, sim):
     sim.threshold_word = 0x8000 | 64
-    connected.ReceiveStatusFromPrompt()            # (without it, this would test I-14)
+    connected.ReceiveStatusFromPrompt()            # (else this tests stale cached flags)
     connected.StartAcquisition()
     assert connected.StopAcquisition() == 0
     assert sim.threshold_word == 0x8000 | 64      # mode and threshold kept

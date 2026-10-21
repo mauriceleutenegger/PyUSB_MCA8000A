@@ -11,8 +11,7 @@ affect the results. The library is used only for the handshakes (`SendCommand`, 
 prompts, `SetBaudRate`, `PowerOn`).
 
 Run from this directory. Each script saves its results as JSON in `results/`.
-`I-n` labels refer to the maintainer's issue list; results are summarized in
-`docs/protocol.md`.
+Results are summarized in `docs/protocol.md`.
 
 ```
 python3 check_probe.py [--port /dev/cu.usbserial-XXXX] [--baud 57600] [--power-on]
@@ -23,16 +22,16 @@ The port defaults to `$MCA_PORT`. Use `--power-on` if the MCA is off.
 | Script | Question | Changes MCA state? | Time |
 |---|---|---|---|
 | `check_probe.py` | Connect and print status | No | seconds |
-| `check_block_count.py` | Count-bit layout of 40h–52h (I-2) | No | ~30 s |
-| `check_start_channel.py` | Start-channel encoding (I-1) | No | ~30 s |
-| `check_checksum.py` | Data checksum: 32-bit or mod 2¹⁶ (I-11). Needs a spectrum with many counts somewhere in memory. | No | ~40 s |
-| `check_cts_ack.py` | Meaning of the 2nd CTS toggle; how the checksum is checked (I-12) | No | ~30 s |
-| `check_baud.py` | Baud-rate setting, DTR delay (I-17) | No (baud only) | ~2 min |
-| `check_powerdown.py` | Auto power-down and recovery (I-20). Battery only. | No | ~6 min |
-| `check_preset.py --yes` | Preset 0 = run until stopped? Preset stop; stale flags (I-14) | **Yes**: scratch group, clears its time; restores group and preset | ~30 s |
+| `check_block_count.py` | Count-bit layout of 40h–52h | No | ~30 s |
+| `check_start_channel.py` | Start-channel encoding | No | ~30 s |
+| `check_checksum.py` | Data checksum: 32-bit or mod 2¹⁶. Needs a spectrum with many counts somewhere in memory. | No | ~40 s |
+| `check_cts_ack.py` | Meaning of the 2nd CTS toggle; how the checksum is checked | No | ~30 s |
+| `check_baud.py` | Baud-rate setting, DTR delay | No (baud only) | ~2 min |
+| `check_powerdown.py` | Auto power-down and recovery. Battery only. | No | ~6 min |
+| `check_preset.py --yes` | Preset 0 = run until stopped? Preset stop; the library's stale cached flags | **Yes**: scratch group, clears its time; restores group and preset | ~30 s |
 | `check_tx_timing.py` | macOS driver bugs in `timing.md`: RX purge discards unsent output, `out_waiting`, `flush()`. Run once per driver/port. | No | ~5 min |
 | `check_tx_timing.py --bulk` | Same, with kB of data. **MCA unplugged from the cable.** | No | ~2 min |
-| `check_lock_zero.py` | Lock 0 on an already-locked unit (I-21) | **Yes: may wipe data** | ~15 s |
+| `check_lock_zero.py` | Lock 0 on an already-locked unit (no known unlock procedure) | **Yes: may wipe data** | ~15 s |
 
 `check_lock_zero.py` refuses to run unless the serial number matches, the unit reports
 itself locked, and `--i-understand-this-may-wipe-data` is given. Nothing here ever sets a

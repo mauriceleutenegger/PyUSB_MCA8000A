@@ -1,4 +1,4 @@
-"""Output and error paths (I-4, I-5)."""
+"""Output and error paths."""
 
 import pytest
 

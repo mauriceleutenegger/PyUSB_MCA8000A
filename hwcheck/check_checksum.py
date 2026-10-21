@@ -1,4 +1,4 @@
-"""I-11: is the data checksum in the status a full 32-bit byte sum, or mod 2^16?
+"""Is the data checksum in the status a full 32-bit byte sum, or mod 2^16?
 
 Reads memory in 1024-word blocks (lower and upper words) from the current group
 onwards (reading past the end of a group continues into the next groups). Each
@@ -59,14 +59,14 @@ def main():
         if n_bad:
             rep.result('checksums', 'FAIL', '{} transfers matched neither hypothesis'.format(n_bad))
         if n_big == 0:
-            rep.result('I-11: checksum modulus', 'INCONCLUSIVE',
+            rep.result('checksum modulus', 'INCONCLUSIVE',
                        'no block with byte sum > 65535 found; need a high-count spectrum')
         elif n_full == n_big:
-            rep.result('I-11: checksum is the full 32-bit sum', 'PASS')
+            rep.result('checksum is the full 32-bit sum', 'PASS')
         elif n_mod == n_big:
-            rep.result('I-11: checksum is mod 2^16', 'PASS')
+            rep.result('checksum is mod 2^16', 'PASS')
         else:
-            rep.result('I-11: checksum modulus', 'INCONCLUSIVE', 'mixed results')
+            rep.result('checksum modulus', 'INCONCLUSIVE', 'mixed results')
     except HWError as e:
         rep.result('error', 'FAIL', str(e))
     rep.save()

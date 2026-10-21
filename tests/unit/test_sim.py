@@ -36,7 +36,7 @@ def test_valid_command_gets_both_toggles(host):
 
 
 def test_rejected_command_gets_no_toggle2_and_a_status(host, sim):
-    # checksum below the true sum is rejected (I-23); RTS low then gives a status
+    # checksum below the true sum is rejected; RTS low then gives a status
     t1, t2 = host.command(bytes([0x02, 10, 0, 0, 11]))
     assert (t1, t2) == (True, False)
     assert sim.preset == 0
@@ -45,7 +45,7 @@ def test_rejected_command_gets_no_toggle2_and_a_status(host, sim):
 
 
 def test_checksum_test_is_lenient(host, sim):
-    # I-23: accepted when checksum byte >= sum (mod 256)
+    # accepted when checksum byte >= sum (mod 256)
     assert host.command(bytes([0x02, 10, 0, 0, 0xFF])) == (True, True)
     assert sim.preset == 10
 
@@ -370,7 +370,7 @@ def test_stream_stopped_by_prompt_at_115200_mutes_until_a_byte(host, sim):
     host.set_baud(115200)
     host.wait(0.2)
     host.port.reset_input_buffer()
-    assert host.status() == b''                          # I-24
+    assert host.status() == b''                          # muted
     assert host.status() == b''
     # any command, even a rejected one, releases the tail plus its response
     assert host.command(bytes([0x40, 0, 0, 0, 0]))[1] is False
@@ -418,7 +418,7 @@ def test_purge_keeps_bytes_still_in_flight_from_mca(host, sim):
 
 def test_powered_down_mca_is_silent(host, sim):
     sim.power_down_now()
-    assert host.prompt()                                 # one floating CTS change (I-20)
+    assert host.prompt()                                 # one floating CTS change
     assert host.collect() == b''
     assert not host.prompt()
     assert host.command(with_checksum(0x02, 1, 0, 0)) == (False, False)
@@ -445,7 +445,7 @@ def test_power_on_burst(host, sim):
     sim.real[0] = 12.0
     sim.power_down_now()
     host.port.rts = True
-    host.wait(0.01)                                      # let the floating change pass (I-20)
+    host.wait(0.01)                                      # let the floating change pass
     ref_cts, ref_dsr = host.port.cts, host.port.dsr
     for _ in range(200):                                 # 1 kHz for 0.2 s
         host.port.dtr = True
@@ -457,7 +457,7 @@ def test_power_on_burst(host, sim):
     host.port.rts = False
     host.collect()
     st = status_of(host)
-    assert st['real'] == pytest.approx(12.0)             # state survives (I-20)
+    assert st['real'] == pytest.approx(12.0)             # state survives
 
 
 # ---------------------------------------------------------------- faults
@@ -499,7 +499,7 @@ def test_library_initialize(mca, sim, baud, capsys):
 
 
 def test_library_without_end_data_stream_fails_at_115200(mca, sim, monkeypatch, capsys):
-    # I-24 as it was before 51181ea: the MCA stays muted and no status arrives.
+    # 115200 as it was before 51181ea: the MCA stays muted and no status arrives.
     monkeypatch.setattr(mca, 'EndDataStream', lambda: 0)
     mca.SetBaudRate(115200)
     assert any(kind == 'muted_no_answer' for _, kind, _ in sim.log)

@@ -28,13 +28,13 @@ def host(sim):
 
 @pytest.fixture
 def mca(sim):
-    """An MCA8000A instance talking to the simulator (M-1: port passed in)."""
+    """An MCA8000A instance talking to the simulator (port passed in)."""
     port = FakeSerial(sim, '/dev/sim')
     return MCA8000A.MCA8000A(None, serial_connection=port)
 
 
 @pytest.fixture
 def connected(mca):
-    """The library connected at 115200 (D6: the rate users run at)."""
+    """The library connected at 115200 (the rate users run at)."""
     assert mca.Initialize(baudrate=115200) == 0
     return mca

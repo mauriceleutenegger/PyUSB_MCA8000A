@@ -30,7 +30,7 @@ class HWError(Exception):
 
 @contextlib.contextmanager
 def quiet():
-    """Swallow the library's unconditional prints (issues I-5)."""
+    """Swallow the library's prints."""
     with contextlib.redirect_stdout(io.StringIO()):
         yield
 

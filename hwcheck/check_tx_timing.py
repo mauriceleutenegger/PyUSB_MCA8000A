@@ -9,7 +9,8 @@ AppleUSBFTDI (/dev/cu.usbserial-5). Never open both ports at once.
 
 Part 1, handshake (default; MCA on; read-only). Sends a 1-word data request (40h) with the
 USB handshake. CTS toggle #2 comes only when the MCA has received the complete, valid
-command (issues I-12), so it shows whether the bytes really went out. Right after write():
+command (docs/protocol.md §6), so it shows whether the bytes really went out.
+Right after write():
   none        nothing (control)
   purge_rx    reset_input_buffer() at once                 -> tests bug B
   wait_purge  library's fixed wait, then reset_input_buffer()  (the current workaround)

@@ -1,4 +1,4 @@
-"""Baud rate setting (I-17 and related observations).
+"""Baud rate setting (the DTR delay and related observations).
 
 Checks, for each rate:
   1. Reopening the port puts the MCA back to 4800 baud.

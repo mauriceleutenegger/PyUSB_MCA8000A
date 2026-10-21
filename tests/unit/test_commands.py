@@ -1,7 +1,7 @@
 """Command encoders (module-level functions of MCA8000A.py). docs/protocol.md §5, §9, §10.
 
 Expected bytes come from the protocol doc's tables, computed here independently
-(mcasim.host.block_command is the DLL layout, confirmed on hardware for I-1 and I-2).
+(mcasim.host.block_command is the DLL layout, confirmed on hardware).
 """
 
 import pytest
@@ -32,13 +32,13 @@ def test_send_data_codes(upper, group, code):
 
 @pytest.mark.parametrize('nwords', [1, 2, 3, 5, 64, 255, 256, 257, 300, 513, 1023, 1024])
 def test_send_data_word_count(nwords):
-    # I-2 (resolved): DLL layout, W = N - 1, bits 9-8 in byte 1, 7-0 in byte 3
+    # DLL layout (confirmed on hardware), W = N - 1, bits 9-8 in byte 1, 7-0 in byte 3
     assert lib.Command_SendData(0, nwords) == block_command(0x40, 0, nwords)
 
 
 @pytest.mark.parametrize('start', [0, 1, 63, 64, 256, 1000, 1024, 16000, 16383])
 def test_send_data_start_channel(start):
-    # S bits 5-0 in byte 1 bits 7-2, S bits 13-6 in byte 2 (§9). I-1: the old layout
+    # S bits 5-0 in byte 1 bits 7-2, S bits 13-6 in byte 2 (§9). The old layout
     # (S bits 13-8 in byte 1, 7-0 in byte 2) agreed only for 0 and 16383.
     assert lib.Command_SendData(start, 7) == block_command(0x40, start, 7)
 
@@ -104,7 +104,7 @@ def test_delete_defaults_to_both():
 
 @pytest.mark.parametrize('n', [0, 1, 0x1234, 0xFFFF])
 def test_lock_encoding(n):
-    # encoded here, never sent to hardware (CLAUDE.md, I-21)
+    # encoded here, never sent to hardware (no known way to undo a lock)
     assert lib.Command_MCALock(n) == with_checksum(0x75, n & 0xFF, n >> 8, 1)
 
 

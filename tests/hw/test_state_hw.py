@@ -3,7 +3,7 @@
 --hw-state: settings only (threshold, preset), in the scratch group, restored.
 --hw-delete: also acquisition and DELETE in the scratch group.
 --hw-any-memory: also resolution changes, which write into other groups' parameter
-  channels (I-27). Only on an MCA with nothing to keep.
+  channels. Only on an MCA with nothing to keep.
 --hw-slow: power-down on battery and recovery (~7 min; the MCA must be on battery).
 """
 

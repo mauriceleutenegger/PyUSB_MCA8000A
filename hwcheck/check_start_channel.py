@@ -1,4 +1,4 @@
-"""I-1: how is the start channel encoded in block data commands?
+"""How is the start channel encoded in block data commands?
 
 Reads a reference window of the top 64 channels of the spectrum (they are never
 zero, so they make a recognizable pattern), then reads shorter windows that start
@@ -61,10 +61,10 @@ def main():
                                '' if ok else 'expected {} got {}'.format(exp, got))
         rep.info('all_ok', all_ok)
         if all_ok['dll'] is None:
-            rep.result('I-1', 'INCONCLUSIVE', 'no usable pattern')
+            rep.result('start-channel encoding', 'INCONCLUSIVE', 'no usable pattern')
         else:
-            rep.result('I-1: DLL start-channel encoding correct', 'PASS' if all_ok['dll'] else 'FAIL')
-            rep.result('I-1: MCA8000A.py start-channel encoding correct (expected FAIL)',
+            rep.result('DLL start-channel encoding correct', 'PASS' if all_ok['dll'] else 'FAIL')
+            rep.result('MCA8000A.py start-channel encoding correct (expected FAIL)',
                        'PASS' if all_ok['py'] else 'FAIL')
     except HWError as e:
         rep.result('error', 'FAIL', str(e))

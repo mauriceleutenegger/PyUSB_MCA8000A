@@ -8,7 +8,7 @@ Scratch the test works in.
 Safety on hardware:
 - Everything happens in a scratch group: the highest group at the original resolution
   (as hwcheck/check_preset.py). The MCA must be stopped, unprotected, not in absolute-peak
-  mode (I-13), and not already in that group; otherwise the tests skip.
+  mode, and not already in that group; otherwise the tests skip.
 - `Scratch.restore` puts back flags (resolution, timer), threshold, group and preset and
   checks them. The hw fixture runs it on a freshly opened port, even after a failure.
 - `hw_state` scenarios change settings only: no acquisition, no deletion.
@@ -16,8 +16,8 @@ Safety on hardware:
 - A state session also compares all memory outside the scratch group, and the original
   group's times, at its start and end (hw/conftest.py).
 
-The library's prompt fails once after someone else's prompt (I-15), so scenarios refresh
-its cached status with `sync` rather than a plain ReceiveStatusFromPrompt.
+The library's prompt used to fail once after someone else's prompt (fixed since), so
+scenarios refresh its cached status with `sync` rather than a plain ReceiveStatusFromPrompt.
 """
 
 import numpy as np
@@ -150,7 +150,7 @@ def run_for(host, seconds):
 
 def sync(mca):
     """Refresh the library's cached status. Its first prompt after another program's
-    prompt fails (I-15); the next one works."""
+    prompt used to fail (fixed since); the next one works."""
     if mca.ReceiveStatusFromPrompt():
         assert mca.ReceiveStatusFromPrompt() == 0
 
@@ -167,7 +167,7 @@ class Scratch:
 
     def allowed_changes(self, any_memory=False):
         """Memory a state session may change: the scratch group, and the last 4 channels
-        (the group's parameters, I-27) of the groups it visits with SET GROUP: the
+        (the group's parameters) of the groups it visits with SET GROUP: the
         original group and the snapshot's groups 0 and 16384 / R. With `any_memory`
         (the resolution test), also those of the scratch group's number at each lower
         resolution, where a resolution change puts it."""
@@ -187,7 +187,7 @@ class Scratch:
         if orig['protected']:
             return 'MCA is protected (locked)'
         if orig['absolute_peak']:
-            return 'absolute-peak mode is on; the library can\'t send CONTROL (I-13)'
+            return 'absolute-peak mode is on; the library can\'t send CONTROL'
         group = TOTAL_CHANNELS // orig['resolution'] - 1
         if orig['group'] == group:
             return ('MCA is in group {}, the scratch group; switch to another group '
@@ -226,7 +226,7 @@ class Scratch:
 
 def threshold(mca, host, scratch):
     """§10 CONTROL: SetThreshold sets the threshold and keeps the flags. Values above
-    R/2 - 1 are clamped to it (I-8; seen at 2048)."""
+    R/2 - 1 are clamped to it (seen at 2048)."""
     sync(mca)
     top = scratch.R // 2 - 1
     for t in (0, 1, 100, top):
@@ -254,7 +254,7 @@ def resolution(mca, host, scratch):
     change the host moves to the highest group at the new resolution, which lies inside
     the scratch group. Hardware: only with --hw-any-memory. Between the two commands
     the MCA is in the scratch group's number at the new resolution, i.e. in other memory,
-    and the SET GROUP writes the parameters into that group's last 4 channels (I-27)."""
+    and the SET GROUP writes the parameters into that group's last 4 channels."""
     sync(mca)
     keep = scratch.orig['flags'] & ~7
     R = 256
@@ -312,7 +312,7 @@ def preset_stop(mca, host, scratch):
 
 
 def stale_flags_restart(mca, host, scratch):
-    """I-14: after a stop by another program, SetThreshold mustn't restart acquisition."""
+    """After a stop by another program, SetThreshold mustn't restart acquisition."""
     delete(host, False, True, scratch.R)
     set_preset(host, 0)
     sync(mca)
@@ -366,7 +366,7 @@ def delete_data_and_time(mca, host, scratch):
 # ---------------------------------------------------------------- power-down (hw_slow)
 
 def power_down_and_recover(mca, host, idle):
-    """I-20: on battery, idle until the MCA powers down; the library fails cleanly, and
+    """On battery, idle until the MCA powers down; the library fails cleanly, and
     PowerOn + Initialize bring it back with its state intact."""
     before = fresh(host)
     if not before['battery']:
