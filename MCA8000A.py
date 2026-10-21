@@ -8,7 +8,6 @@ def wait (delay=0.2) :
     while (True) :
         if timeit.default_timer () > timeout :
             return
-    return
 
 def addCheckSum (data) : # data is a byte array
     checksum = sum (data)
@@ -113,9 +112,8 @@ class MCA8000A :
     # serial_connection: an already open port object to use instead of opening
     # device_path (e.g. a simulated port for testing). It is set to the same
     # line settings as a port opened here.
-    def __init__ (self, device_path, baudrate=4800, serial_connection=None) :
+    def __init__ (self, device_path, serial_connection=None) :
         self.device_path = device_path
-        self.baudrate = baudrate # this doesn't do anything right now
         if serial_connection is None :
             self.serial_connection = serial.Serial \
                 (self.device_path, baudrate=4800, parity='E',
@@ -249,7 +247,6 @@ class MCA8000A :
             if timeit.default_timer () > timeout :
                 if self.debug : print ("CTS did not flip")
                 return 1 # failure
-        return 2 # should not get here
 
     # this function only does the actual write command on the serial port;
     # it then waits for the bytes to go out (their time on the wire plus
@@ -478,7 +475,6 @@ class MCA8000A :
                     return 1, outdata # got more than we expected
                 else :
                     return 0, outdata
-        return 1, None
 
     def ReceiveChannelData (self, delay=0.1) :
         # reads channels 0 to min (resolution, 1024) - 1 of the current
