@@ -114,12 +114,8 @@ class MCA8000A :
     # device_path (e.g. a simulated port for testing). It is set to the same
     # line settings as a port opened here.
     def __init__ (self, device_path, baudrate=4800, serial_connection=None) :
-        #, isMacFTDI=False) :
         self.device_path = device_path
         self.baudrate = baudrate # this doesn't do anything right now
-        #self.isMacFTDI = isMacFTDI
-        #self.DTR_Delay = 0.01 # parameter used for SetBaudRate on Mac
-        # should probably get rid of it
         if serial_connection is None :
             self.serial_connection = serial.Serial \
                 (self.device_path, baudrate=4800, parity='E',
@@ -255,42 +251,14 @@ class MCA8000A :
                 return 1 # failure
         return 2 # should not get here
 
-    # superceded by direct calculation of time plus padding
-    #def WaitToSendData (self, delay=0.2) :
-    #    timeout = timeit.default_timer () + delay
-    #    while (True) :
-    #        if self.serial_connection.out_waiting == 0 :
-    #            return 0 # success
-    #        if timeit.default_timer () > timeout :
-    #            if self.debug : print ("Writing timed out")
-    #            return 1 # failure
-    #    return 2 # should not get here
-
-    # this function only does the actual write command on the serial port
-    # the behavior depends on self.isMacFTDI
-    # if true, then it writes individual bytes
-    # and pauses to let the FTDI chip finish sending each byte
-    # this is because of an apparent bug in the MacOS FTDI driver
+    # this function only does the actual write command on the serial port;
+    # it then waits for the bytes to go out (their time on the wire plus
+    # send_padding), because on macOS a purge right after a write can
+    # discard bytes not yet sent (timing.md)
     def SendCommandBytes (self, commandbytes) :
-        #if self.isMacFTDI :
-        #    single_byte_delay = 10.0 / self.baudrate # time to send 10 bits
-        #    for i in range (len (commandbytes)) :
-        #        self.serial_connection.write ((bytes([commandbytes[i]])))
-        #        # the syntax of the preceding line is needed to
-        #        # make a bytes object of length one
-        #        # a single element of a bytearray i.e. commandbytes[i] is an int
-        #        # so we make that into a list with length one
-        #        # and cast it as bytes
-        #        stat = self.WaitToSendData ()
-        #        if stat : return stat
-        #        wait (single_byte_delay)
-        #    return 0
-        #else :
         self.serial_connection.write (commandbytes)
         wait (len (commandbytes) * self.bits_per_byte
               / self.serial_connection.baudrate + self.send_padding)
-        #stat = self.WaitToSendData ()
-        #if stat : return stat
         return 0
         
     def SendCommand (self, command, n_retries=10) :
@@ -310,15 +278,8 @@ class MCA8000A :
                 continue # retry
 
             # send data
-            #self.serial_connection.write (command)
             self.SendCommandBytes (command)
 
-            
-            #if self.WaitToSendData () :
-            #    if self.debug : print ("Writing data failed")
-            #    self.ResetRTS ()
-            #    continue # retry
-            
             # make sure the buffer for receiving MCA data is cleared
             if self.debug :
                 print ("CTS before purge:", self.serial_connection.cts,
@@ -340,30 +301,6 @@ class MCA8000A :
 
         print ("Sending command failed")
         return 1 # failure
-
-    #def GetStatus (self) :
-    #    self.serial_connection.rts = True
-    #    if self.WaitForCTSFlip () :
-    #        if self.debug : print ("GetStatus: CTS flip failed")
-    #        return 1 # failure
-    #    self.serial_connection.rts = False
-    #    # should break the below to a separate function
-    #    timeout = timeit.default_timer () + delay
-    #    outdata = bytearray ()
-    #    while (True) :
-    #        if (self.serial_connection.in_waiting > 0) :
-    #            timeout = timeit.default_timer () + delay # reset
-    #            outdata.append (self.serial_connection.read (1))
-    #        if timeit.default_timer () > timeout :
-    #            print ("GetStatus: read timeout")
-    #            return 1 # failure
-    #        if len (outdata) == 20 :
-    #            break # done getting data
-    #    # just print bytes for now
-    #    for i in range (20) :
-    #        print (outdata[i])
-    #    return 0
-
 
     def SetBaudRate (self, baudrate) :
         if 115200 % baudrate > 0 :
@@ -387,7 +324,6 @@ class MCA8000A :
             return 1 # failure (SendCommand leaves RTS low)
         # set baudrate on comm port, clear
         self.serial_connection.baudrate = baudrate
-        #self.serial_connection.rts = False # should already be zero
         wait (0.2)
 
         self.PurgeRX () # throw out whatever's in there
@@ -438,7 +374,8 @@ class MCA8000A :
         wait (0.0002)
         return stat
 
-    # can this every be called without serial number?
+    # a prompted status always has the serial number and group, not the
+    # data checksum (docs/protocol.md section 8)
     def ReceiveStatusFromPrompt (self) :
         stat = self.PromptForStatus ()
         if not stat :
@@ -459,17 +396,6 @@ class MCA8000A :
         if stat:
             print ("ReceiveStatus: error getting status bytes")
             return 1
-        #timeout = timeit.default_timer () + delay
-        #outdata = bytearray ()
-        #while (True) :
-        #    if (self.serial_connection.in_waiting > 0) :
-        #        timeout = timeit.default_timer () + delay # reset
-        #        outdata.append (self.serial_connection.read (1)[0])
-        #    if timeit.default_timer () > timeout :
-        #        print ("ReceiveStatus: read timeout")
-        #        return 1 # failure
-        #    if len (outdata) == 20 :
-        #        break # done getting data
         stat = self.UpdateStatusFromData (StatusData, hasSerialNumber)
         if stat :
             if self.debug :
@@ -493,11 +419,12 @@ class MCA8000A :
                 for i in range (20) :
                     print (data[i])
             return 1 # failure
-        #should do something with checksum if hasSerialNumber=False
+        # bytes 0-3: serial number and group, or the data checksum of the
+        # previous transfer (docs/protocol.md section 8)
         if hasSerialNumber :
             self.SerialNumber = int.from_bytes (data[0:2], "big")
-            # I think group number is the next two bytes
-            # but I did not check
+            # bytes 2-3 are the group number (not parsed yet; the DLL
+            # uses the low 10 bits)
         else :
             self.LastDataCheckSum = int.from_bytes (data[0:4], "big")
         self.PresetTime = int.from_bytes (data[4:7], "big")
@@ -554,11 +481,8 @@ class MCA8000A :
         return 1, None
 
     def ReceiveChannelData (self, delay=0.1) :
-        # this only works for resolution 1024 or below
-        # I see unexpected behavior for the get data commands
-        # when it's called with parameters other than 0,1024
-        # and even for that parameter, I see weird data for
-        # high channel numbers > 1000
+        # reads channels 0 to min (resolution, 1024) - 1 of the current
+        # group; above 1024 channels the rest needs more data requests
         words_requested = min (self.ADCResolution, 1024)
         start_channel = 0
         # first get the lower words
@@ -621,7 +545,6 @@ class MCA8000A :
             print ("ReceiveChannelData: error receiving data")
             return stat
         # throw away the dummy data
-        #self.PurgeRX () # throw out the remaining byte
 
         # words are unsigned, low byte first; widen before combining
         lower = np.frombuffer (lowerdata, dtype='<u2').astype (np.int64)
@@ -675,6 +598,8 @@ class MCA8000A :
     def SetThreshold (self, threshold) :
         return self.SendControl ("SetThreshold", threshold=threshold)
 
+    # Clearing the protected flag with CONTROL probably doesn't unlock;
+    # the unlock procedure is unknown (docs/protocol.md section 12).
     def SetLock (self, lock_number) :
         command = Command_MCALock (lock_number)
         return self.SendCommandAndUpdate ("SetLock", command)
@@ -683,22 +608,6 @@ class MCA8000A :
         command = Command_MCALock (0)
         return self.SendCommandAndUpdate ("SetLockToZero", command, 4.0)
 
-    # I think you can't just set public.
-    # Probably you have to unlock with a code.
-    #def SetPublic (self) :
-    #    flags = self.flags & 0b11011111 # set protected bit to zero
-    #    command = Command_Control (flags, self.Threshold)
-    #    stat = self.SendCommand (command)
-    #    if stat :
-    #        print ("SetPublic: error sending command")
-    #        return stat
-    #    wait (0.5)
-    #    stat = self.ReceiveStatusFromPrompt ()
-    #    if stat :
-    #        print ("SetPublic: error updating status")
-    #        return stat
-    #    return 0
-    
     def SetADCResolution (self, channels) :
         # rounds channels up to nearest power of two
         # here is the code that sets resolution from bits:
@@ -789,11 +698,5 @@ class MCA8000A :
 
     # I don't think these are needed if you don't care about recording
     # the external time of the experiment
-
-
-    # need to test these, but they almost certainly work
-    # clear data
-
-    # clear data and time
 
 
